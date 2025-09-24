@@ -1,0 +1,3 @@
+ZAKUPKI_TOKEN = ''
+AI_API_KEY = ''
+AI_URL = ''
