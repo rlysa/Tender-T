@@ -105,11 +105,17 @@ def make_request_to_ai(text, model=MODEL):
         print(f'Ошибка в отправке запроса модели\n{e}')
 
 
-def save_result(file_name, *result):
+def save_result(file_name, *result, mode='w'):
     try:
-        with open(file_name, encoding='utf-8', mode='w') as file:
-            file.write('\n'.join(result))
-            print(f'Результат сохранен в файл {file_name}')
+        if mode == 'wb':
+            with open(file_name, mode='wb') as file:
+                for i in result.iter_content(chunk_size=8192):
+                    print(i, '\n\n\n\n------------------------------------------------------\n\n\n')
+                    file.write(i)
+        else:
+            with open(file_name, encoding='utf-8', mode='w') as file:
+                file.write('\n'.join(result))
+        print(f'Результат сохранен в файл {file_name}')
     except Exception as e:
         print(f'Ошибка при сохранении результата в файл\n{e}')
 
@@ -130,7 +136,7 @@ def less_max_tokens(prompt, full_text, model=MODEL):
 
     tokens_full_text = len(count_tokens(full_text))
     tokens_prompt = len(count_tokens(prompt))
-    print(f'Количество токенов: {tokens_prompt + tokens_full_text}')
+    # print(f'Количество токенов: {tokens_prompt + tokens_full_text}')
     if tokens_full_text + tokens_prompt > MAX_TOKENS:
         max_tokens_text = (MAX_TOKENS - tokens_prompt)
         count = tokens_full_text // max_tokens_text + 1
@@ -203,14 +209,21 @@ def main():
     true_cards_answ = '\n'.join(true_cards_answ).split('\n')
     print(cards)
     true_cards = {}
-    for i in true_cards_answ:
-        card_num, doc_name = i.strip().split(':')
-        doc = requests.get(docs[doc_name.strip()], headers=headers)
-        true_cards[card_num.strip()] = cards[card_num.strip()][:3] + [doc_name.strip()]
+    for i in true_cards_answ[0:5]:
+        try:
+            card_num, doc_name = [j.strip() for j in i.strip().split(':')]
+            if doc_name not in docs:
+                for j in cards[card_num][3:]:
+                    if doc_name in j:
+                        doc_link = j
+            else:
+                doc_link = docs[doc_name]
+            true_cards[card_num] = cards[card_num][:3] + [doc_link]
+        except Exception as e:
+            print('-------------------', doc_name, cards[card_num])
     print(f'{datetime.now()}: Отобраны релевантные карточки.')
     print(true_cards)
 
-    return
     # for card in true_cards:
     #     response_docs = requests.get(true_cards[card][2], headers=headers)
     #     soup_docs = BeautifulSoup(response_docs.text, 'html.parser')
