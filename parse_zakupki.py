@@ -22,11 +22,15 @@ def get_text_from_file(file_name='ПРАЙС РДК ИЮЛЬ ОПТ СО СК�
                 reader = PyPDF2.PdfReader(file)
                 for i, page in enumerate(reader.pages):
                     file_text += page.extract_text() + '\n'
-
+        elif extension == 'txt':
+            with open(file_name, encoding='utf-8') as file:
+                file_text = '\n'.join([i.lower().strip() for i in file.readlines()])
 
         elif extension == 'docx':
             from docx import Document
+            import warnings
 
+            warnings.filterwarnings("ignore", category=UserWarning, message="wmf image format is not supported")
             doc = Document(file_name)
             for para in doc.paragraphs:
                 file_text += para.text + '\n'
@@ -97,13 +101,7 @@ def get_text_from_file(file_name='ПРАЙС РДК ИЮЛЬ ОПТ СО СК�
 
         return file_text
     except Exception as e:
-        print(f'Ошибка при чтении файла\n{e}')
-
-
-def get_key_words(file_name='key_words.txt'):
-    with open(file_name, encoding='utf-8') as file:
-        key_words = [i.lower().strip() for i in file.readlines()]
-    return key_words
+        print(f'Ошибка при чтении файла {file_name} \n{e}')
 
 
 def get_date(period=6):
@@ -276,6 +274,12 @@ def make_request_to_ai(prompt, text, model=MODEL):
         return ['\n'.join(answer), prompt_tokens, completion_tokens]
     except Exception as e:
         print(f'Ошибка в отправке запроса модели\n{e}')
+        if len(answer) != 0:
+            return ['\n'.join(answer), prompt_tokens, completion_tokens]
+        # print(f'Wait')
+        # time.sleep(120)
+        # print(f'Repeat')
+        # make_request_to_ai(prompt, text)
 
 
 def save_result(file_name, *result):
@@ -296,99 +300,89 @@ def save_result(file_name, *result):
 def main():
     prompt_tokens, completion_tokens = 0, 0
 
-    # категории товаров из файла (вручную) и ключевые, синонимичные слова (через ИИ по КТ)
-    file_text = '\n'.join(get_key_words())
+    # категории товаров из файла (вручную) и ключевые (через ИИ по КТ)
+    product_categories = get_text_from_file('product_category.txt')
     print(f'{datetime.now()}: Выделены категории товаров')
-    key_words_answ = make_request_to_ai(prompt_get_key_words, file_text)
-    prompt_tokens += key_words_answ[1]
-    completion_tokens += key_words_answ[2]
-    # save_result('key_words_ai.txt', key_words_answ)
-    key_words_list = key_words_answ[0].split('---------------------------')
-    synonym_words = [word.strip() for word in key_words_list[-1].split('\n')]
-    key_words = {}
-    for word in key_words_list[0].strip().split('\n'):
-        kw, kt = [i.strip() for i in word.split(':')]
-        if kw not in key_words:
-            key_words[kw] = []
-        key_words[kw].append(kt)
+    key_words = make_request_to_ai(prompt_get_key_words, product_categories)
+    prompt_tokens += key_words[1]
+    completion_tokens += key_words[2]
+    key_word_categories = {}
+    for pair in key_words[0].strip().split('\n'):
+        word, category = [i.strip() for i in pair.split(':')]
+        if word not in key_word_categories:
+            key_word_categories[word] = []
+        key_word_categories[word].append(category)
     print(f'{datetime.now()}: Выделены ключевые слова')
 
     # карточки тендеров
-    key_word_cards, key_cards = get_cards([i for i in key_words])
-    synonym_word_cards, synonym_cards = get_cards(synonym_words)
+    key_word_cards, cards = get_cards([word for word in key_word_categories][0:7])
     print(f'{datetime.now()}: Собраны все карточки.')
-    save_result('key_words_cards.txt', '\n'.join([i for i in key_word_cards]),
-                                                       '\n'.join([i for i in synonym_word_cards]),
-                                                       '\n'.join([key_cards[i][2] for i in key_cards]),
-                                                       '\n'.join([synonym_cards[i][2] for i in synonym_cards]))
+    save_result('key_words_cards.txt', '\n'.join([word for word in key_word_cards]),
+                                                       '\n'.join([cards[card][2] for card in cards]))
 
     # фильтр 1 (через ИИ по названию карточек)
-    cards_info = '\n'.join([f'{i}: {key_cards[i][0]} Документы: {', '.join(key_cards[i][3])}' for i in key_cards])
-    true_cards_answ = make_request_to_ai(prompt_get_cards.replace('//Заменить1//', key_words_answ[0].replace('\n', ', ')), cards_info)
-    prompt_tokens += true_cards_answ[1]
-    completion_tokens += true_cards_answ[2]
-    true_cards_list = true_cards_answ[0].split('\n')
-    # файлы для карточек, прошедших фильтр 1, + фильтр 2 (по файлам)
-    true_cards = {}
-    for card in true_cards_list:
-        try:
-            card_num, doc_name = [i.strip() for i in card.strip().split(':')]
-            if doc_name not in key_cards[card_num][3]:
-                continue
-            doc_link = key_cards[card_num][4][key_cards[card_num][3].index(doc_name)]
-            true_cards[card_num] = key_cards[card_num][:3] + [doc_name, doc_link]
-        except Exception as e:
-            print('!------------------------', card, e) # key_cards[card_num]
-
-    true_key_word_cards = {}
-    for word in key_word_cards:
-        key_word_cards[word] = [card for card in key_word_cards[word] if card in true_cards]
-        if key_word_cards[word]:
-            true_key_word_cards[word] = key_word_cards[word]
+    cards_info = '\n'.join([f'{card}: {cards[card][0]}' for card in cards])
+    true_cards = make_request_to_ai(prompt_get_cards_1.replace('//Заменить1//', product_categories.replace('\n', ', ')), cards_info)
+    prompt_tokens += true_cards[1]
+    completion_tokens += true_cards[2]
+    true_cards = [card.strip() for card in true_cards[0].split('\n')]
     print(f'{datetime.now()}: Отобраны релевантные карточки. Фильтр 1')
+
+    # файлы
+    cards_info = '\n'.join([f'{card}: {cards[card][3]}' for card in true_cards])
+    true_files = make_request_to_ai(prompt_get_files_names, cards_info)
+    prompt_tokens += true_files[1]
+    completion_tokens += true_files[2]
+    copy_dict = {}
+    for pair in true_files[0].strip().split('\n'):
+        card, file = [i.strip() for i in pair.split(':', 1)]
+        if card in cards:
+            if file in cards[card][3]:
+                copy_dict[card] = cards[card]
+                copy_dict[card][4] = cards[card][4][cards[card][3].index(file)]
+                copy_dict[card][3] = file
+    true_cards = copy_dict
     for card in true_cards:
         path = download_file(true_cards[card][4], card)
-        print(path, card, true_cards[card][3])
         true_cards[card].append(get_text_from_file(path))
     print(f'{datetime.now()}: Скачаны файлы из карточек')
-    true_cards_info = '\n'.join([f'=========================================================\n{i}: {true_cards[i][0]} Документ: {true_cards[i][-1]}' for i in true_cards])
-    true_cards_answ = make_request_to_ai(prompt_get_cards_2.replace('//Заменить1//', key_words_answ[0].replace('\n', ', ')), true_cards_info)
+
+    # фильтр 2 (через ИИ по содержимому файлов)
+    cards_info = '\n'.join([f'=========================================================\n{card} документ: {true_cards[card][-1]}' for card in true_cards if true_cards[card][-1]])
+    true_cards_info = make_request_to_ai(prompt_get_cards_2.replace('//Заменить1//',product_categories.replace('\n', ', ')), cards_info)
+    prompt_tokens += true_cards_info[1]
+    completion_tokens += true_cards_info[2]
+    copy_dict = {}
+    for pair in true_cards_info[0].strip().split('\n'):
+        if ':' in pair:
+            card, info = [i.strip() for i in pair.split(':', 1)]
+            if card in true_cards:
+                copy_dict[card] = true_cards[card]
+                copy_dict[card][-1] = info
+    true_cards = copy_dict
     print(f'{datetime.now()}: Отобраны релевантные карточки. Фильтр 2')
-    prompt_tokens += true_cards_answ[1]
-    completion_tokens += true_cards_answ[2]
-    true_cards_answ = true_cards_answ[0].split('---------------------------')
-    true_cards_answ_2 = []
-    for i in true_cards_answ:
-        if ':' in i:
-            i_spl = i.split(':')
-            if i_spl[0].strip().replace('\n', '') in true_cards:
-                true_cards[i_spl[0].strip().replace('\n', '')][4] = i_spl[1].strip()
-                true_cards_answ_2.append(i_spl[0].strip().replace('\n', ''))
-    print('---------------------------------------------------------------')
-    true_key_word_cards_2 = {}
-    for word in true_key_word_cards:
-        true_key_word_cards[word] = [card for card in true_key_word_cards[word] if card in true_cards_answ_2]
-        if true_key_word_cards[word]:
-            true_key_word_cards_2[word] = key_word_cards[word]
-    # парсинг файла, подсчет маржи
-    file_text = get_text_from_file('Прайс ХАТБЕР 27.08.25 цены С НДС.xlsx', list(true_key_word_cards.keys()))
-    for i in file_text:
-        file_text[i] = '\n'.join(file_text[i])
-    for word in true_key_word_cards_2:
-        for card in true_key_word_cards_2[word]:
-            if card in true_cards and word in file_text:
-                if true_cards[card] and true_cards[card][-1]:
-                    # print(0)
-                    true_key_word_cards[word] = 'Информация по нашим товарам:\n' + file_text[word] + '\nИнформация по карточкам:\n' + ' '.join([card + ': ' + true_cards[card][1] + true_cards[card][-1]])
-    margin_info = '\n'.join([''.join(word) + ''.join(true_key_word_cards[word]) for word in true_key_word_cards_2])
+
+    # парсинг файла
+    file_text = get_text_from_file('Прайс ХАТБЕР 27.08.25 цены С НДС.xlsx', product_categories.split('\n'))
+    for word in file_text:
+        file_text[word] = '\n'.join(file_text[word])
+
+    # подсчет маржи
+    margin_info = []
+    for word in key_word_cards:
+        if word in file_text:
+            cards_info = '\n'.join([f'{card}: {true_cards[card][1]}, {true_cards[card][-1]}'  for card in key_word_cards[word] if card in true_cards])
+            margin_info.append('Информация по нашим товарам:\n' + file_text[word] + '\nИнформация по карточкам:\n' + cards_info)
+    margin_info = '\n'.join(margin_info)
     print(margin_info)
-    margin_answ = make_request_to_ai(promt_count_margin, margin_info)
-    print(f'{datetime.now()}: Подсчитана маржа')
-    save_result('result.txt', margin_answ[0])
-    prompt_tokens += margin_answ[1]
-    completion_tokens += margin_answ[2]
+    margin_info = make_request_to_ai(promt_count_margin, margin_info)
+    print(f'{datetime.now()}: Подготовлены данные для подсчета маржи')
+    prompt_tokens += margin_info[1]
+    completion_tokens += margin_info[2]
+    print('@@@@@@@@@@@@@@@@@@@@@@@@@@@', margin_info)
     print(
         f'Общая стоимость: {prompt_tokens * COST_INPUT_TOKENS * 81} + {completion_tokens * COST_OUTPUT_TOKENS * 81} = {prompt_tokens * COST_INPUT_TOKENS * 81 + completion_tokens * COST_OUTPUT_TOKENS * 81}')
+    save_result('result.txt', margin_info[0])
     # добавить обработку синонимичных слов
 
 
