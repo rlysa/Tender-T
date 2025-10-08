@@ -87,13 +87,13 @@ def get_text_from_file(file_name='ПРАЙС РДК ИЮЛЬ ОПТ СО СК�
                             except:
                                 row_text += str(cell.value) + ' '
                         else:
-                            row_text += str(cell.value) + ' '
+                            row_text += str(cell.value).lower() + ' '
                 if words:
                     for i in words:
                         if i in row_text:
                             if i not in file_text:
                                 file_text[i] = []
-                            file_text[i].append(row_text + '\n')
+                            file_text[i].append(row_text)
                 else:
                     file_text += row_text + '\n'
         while '\n\n' in file_text:
@@ -138,6 +138,7 @@ def get_url(start_date, end_date):
 def get_cards(words):
     word_cards = {}
     cards = {}
+    urls = []
     start_date, end_date = get_date()
     url = get_url(start_date, end_date)
     headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64',
@@ -146,6 +147,7 @@ def get_cards(words):
     for word in words:
         word_cards[word] = []
         url_word = url.replace('searchString=&', f'searchString={word.strip()}&')
+        urls.append(url_word)
         response_word = requests.get(url_word, headers=headers)
         while response_word.status_code != 200:
             time.sleep(2)
@@ -189,7 +191,7 @@ def get_cards(words):
                 print('!--------------------------', response_docs.status_code, url_word, link_on_docs, e)
         print(f'{datetime.now()}: Поиск карточек: {len(word_cards)}/{len(words)}')
 
-    return [word_cards, cards]
+    return [urls, word_cards, cards]
 
 
 def download_file(url, file_name,  save_path='files'):
@@ -299,6 +301,8 @@ def save_result(file_name, *result):
 
 def main():
     prompt_tokens, completion_tokens = 0, 0
+    time = datetime.now().strftime("%d.%m.%Y_%H.%M.%S")
+    os.mkdir(f'results/{time}')
 
     # категории товаров из файла (вручную) и ключевые (через ИИ по КТ)
     product_categories = get_text_from_file('product_category.txt')
@@ -306,19 +310,27 @@ def main():
     key_words = make_request_to_ai(prompt_get_key_words, product_categories)
     prompt_tokens += key_words[1]
     completion_tokens += key_words[2]
-    key_word_categories = {}
+    category_key_words = {}
     for pair in key_words[0].strip().split('\n'):
-        word, category = [i.strip() for i in pair.split(':')]
-        if word not in key_word_categories:
-            key_word_categories[word] = []
-        key_word_categories[word].append(category)
+        category, word = [i.strip() for i in pair.split(':')]
+        if category not in category_key_words:
+            category_key_words[category] = []
+        category_key_words[category].append(word)
+    key_words = [word for category in category_key_words for word in category_key_words[category]]
+    save_result(f'results/{time}/1_key_words.txt', '\n'.join(key_words))
+    save_result(f'results/{time}/2_key_word_categories.txt', '\n'.join([f"{category}: {', '.join(category_key_words[category])}" for category in category_key_words]))
     print(f'{datetime.now()}: Выделены ключевые слова')
 
+    category_key_words = dict(list(category_key_words.items())[0:2])
+    key_words = [word for category in category_key_words for word in category_key_words[category]]
     # карточки тендеров
-    key_word_cards, cards = get_cards([word for word in key_word_categories][0:7])
+    urls, key_word_cards, cards = get_cards(key_words)
+    category_cards = {}
+    for category in category_key_words:
+        category_cards[category] = [card for word in category_key_words[category] for card in key_word_cards[word]]
     print(f'{datetime.now()}: Собраны все карточки.')
-    save_result('key_words_cards.txt', '\n'.join([word for word in key_word_cards]),
-                                                       '\n'.join([cards[card][2] for card in cards]))
+    save_result(f'results/{time}/3_searching_links.txt', '\n'.join(urls))
+    save_result(f'results/{time}/4_cards.txt', '\n'.join([f"{category}\n{'\n'.join([cards[card][2] for card in category_cards[category]])}\n" for category in category_cards]))
 
     # фильтр 1 (через ИИ по названию карточек)
     cards_info = '\n'.join([f'{card}: {cards[card][0]}' for card in cards])
@@ -326,6 +338,7 @@ def main():
     prompt_tokens += true_cards[1]
     completion_tokens += true_cards[2]
     true_cards = [card.strip() for card in true_cards[0].split('\n')]
+    save_result(f'results/{time}/5_filter_1.txt', '\n'.join([f"{category}\n{'\n'.join([cards[card][2] for card in category_cards[category] if card in true_cards])}\n" for category in category_cards]))
     print(f'{datetime.now()}: Отобраны релевантные карточки. Фильтр 1')
 
     # файлы
@@ -342,6 +355,7 @@ def main():
                 copy_dict[card][4] = cards[card][4][cards[card][3].index(file)]
                 copy_dict[card][3] = file
     true_cards = copy_dict
+    save_result(f'results/{time}/6_files_names.txt', '\n'.join([f"{category}\n{'\n'.join([cards[card][3] + '\t' + cards[card][2] for card in category_cards[category] if card in true_cards])}\n" for category in category_cards]))
     for card in true_cards:
         path = download_file(true_cards[card][4], card)
         true_cards[card].append(get_text_from_file(path))
@@ -360,31 +374,43 @@ def main():
                 copy_dict[card] = true_cards[card]
                 copy_dict[card][-1] = info
     true_cards = copy_dict
+    save_result(f'results/{time}/7_filter_2.txt', '\n'.join([f"{category}\n{'\n'.join([cards[card][2] for card in category_cards[category] if card in true_cards])}\n" for category in category_cards]))
     print(f'{datetime.now()}: Отобраны релевантные карточки. Фильтр 2')
 
     # парсинг файла
     file_text = get_text_from_file('Прайс ХАТБЕР 27.08.25 цены С НДС.xlsx', product_categories.split('\n'))
     for word in file_text:
         file_text[word] = '\n'.join(file_text[word])
+    save_result(f'results/{time}/8_products.txt', '\n\n'.join([category + '\n' + file_text[category] for category in product_categories.split('\n') if category in file_text]))
 
     # подсчет маржи
     margin_info = []
-    for word in key_word_cards:
-        if word in file_text:
-            cards_info = '\n'.join([f'{card}: {true_cards[card][1]}, {true_cards[card][-1]}'  for card in key_word_cards[word] if card in true_cards])
-            margin_info.append('Информация по нашим товарам:\n' + file_text[word] + '\nИнформация по карточкам:\n' + cards_info)
+    for category in category_cards:
+        if category in category_cards:
+            cards_info = '\n'.join([f'{card}: {true_cards[card][1]}, {true_cards[card][-1]}' for card in category_cards[category] if card in true_cards])
+            margin_info.append('Информация по нашим товарам:\n' + file_text[category] + '\nИнформация по карточкам:\n' + cards_info)
     margin_info = '\n'.join(margin_info)
-    print(margin_info)
     margin_info = make_request_to_ai(promt_count_margin, margin_info)
     print(f'{datetime.now()}: Подготовлены данные для подсчета маржи')
+    save_result(f'results/{time}/9_margin_info.txt', margin_info[0])
     prompt_tokens += margin_info[1]
     completion_tokens += margin_info[2]
-    print('@@@@@@@@@@@@@@@@@@@@@@@@@@@', margin_info)
     print(
-        f'Общая стоимость: {prompt_tokens * COST_INPUT_TOKENS * 81} + {completion_tokens * COST_OUTPUT_TOKENS * 81} = {prompt_tokens * COST_INPUT_TOKENS * 81 + completion_tokens * COST_OUTPUT_TOKENS * 81}')
-    save_result('result.txt', margin_info[0])
+        f'Общая стоимость: {prompt_tokens / 1000 * COST_INPUT_TOKENS * 81} + {completion_tokens / 1000 * COST_OUTPUT_TOKENS * 81} = {prompt_tokens / 1000 * COST_INPUT_TOKENS * 81 + completion_tokens / 1000 * COST_OUTPUT_TOKENS * 81}')
+    margin = {}
+    for product in margin_info[0].strip().split('\n'):
+        num, other = [i.strip() for i in product.split(':')]
+        if num in true_cards:
+            print(other)
+            our_pr, our_cost, their_cost, n = [i.strip() for i in other.split(';')]
+            margin[num] = float(their_cost) - float(our_cost) * float(n)
+    margin = dict(sorted(margin.items(), key=lambda x: x[1], reverse=True))
+    result = ''
+    for product in margin:
+        result += f'{true_cards[product][2]}\nМаржа: {margin[product]}\n\n'
+    print(result)
+    save_result(f'results/{time}/10_result.txt', margin_info[0], result)
     # добавить обработку синонимичных слов
-
 
 if __name__ == '__main__':
     for filename in os.listdir('files'):
