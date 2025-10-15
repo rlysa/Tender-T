@@ -1,7 +1,5 @@
 import re
 import time
-from itertools import product
-
 import requests
 from bs4 import BeautifulSoup
 from datetime import date, datetime
@@ -122,7 +120,7 @@ def get_url(start_date, end_date):
     page_number = ['&pageNumber=1', ''][0]  # ?????????????????????????????
     search_filter = ['&search-filter=Дате+размещения', '']  # ????????????? как будто бесполезно из-за sortBy
     sort_direction = '&sortDirection=' + ['false', 'true'][0]  # убывание/возрастание
-    records_per_page = '&recordsPerPage=_' + ['10', '20', '50'][0]
+    records_per_page = '&recordsPerPage=_' + ['10', '20', '50'][2]
     show_lots_info_hidden = '&showLotsInfoHidden=' + ['false', 'true'][0]
     sort_by = '&sortBy=' + ['UPDATE_DATE', 'PUBLISH_DATE', 'PRICE', 'RELEVANCE'][0]
     zakon = ''.join(['&fz44=on', '&fz223=on', '&ppRf615=on', ''])
@@ -134,7 +132,7 @@ def get_url(start_date, end_date):
     appl_submission_close_date_from = ['&applSubmissionCloseDateFrom=' + start_date, ''][0]
     appl_submission_close_date_to = ['&applSubmissionCloseDateTo=' + end_date, ''][0]
 
-    url = f'https://zakupki.gov.ru/epz/order/extendedsearch/results.html?searchString={morphology}{zakon}{stage}{appl_submission_close_date_from}{appl_submission_close_date_to}'
+    url = f'https://zakupki.gov.ru/epz/order/extendedsearch/results.html?searchString={morphology}{zakon}{stage}{appl_submission_close_date_from}{appl_submission_close_date_to}{records_per_page}'
     return url
 
 
@@ -161,7 +159,7 @@ def get_cards(words):
         soup_word = make_request(url_word)
         total = soup_word.find('div', class_='search-results__total').get_text()
         total = int(''.join([i for i in total if i.isdigit()]))
-        pages = total // 10 + 1 if total > 10 else 1
+        pages = total // 50 + 1 if total > 50 else 1
         blocks = soup_word.find_all('div', class_='row no-gutters registry-entry__form mr-0')
         if pages > 1:
             for i in range(2, pages + 1):
@@ -172,54 +170,65 @@ def get_cards(words):
             name = block.find('div', class_='registry-entry__body-value').get_text().strip()
             cost = block.find('div', class_='price-block__value').get_text().strip()
             link = f'https://zakupki.gov.ru{block.find('div', class_='registry-entry__header-mid__number').find('a').get('href')}'
+            link_on_docs = f'https://zakupki.gov.ru{block.find('div', class_='href d-flex').find('a').get('href')}'
             soup_info = make_request(link)
             info = soup_info.find('div', class_='container', id='positionKTRU')
             if not info:
-                print(link)
-                link_on_docs = f'https://zakupki.gov.ru{block.find('div', class_='href d-flex').find('a').get('href')}'
-                products = []
+                link_on_lots = soup_info.find('div', class_='tabsNav d-flex')
+                # print(link)
+                if 'Список лотов' in link_on_lots.get_text():
+                    link_on_lots =  f'https://zakupki.gov.ru{link_on_lots.find_all('a')[1].get('href')}'
+                    products = []
+                else:
+                    print(link)
+                    soup_docs = make_request(link_on_docs)
+                    try:
+                        if link_on_docs[-1] == '=':
+                            print('!--------------------------', url_word, number)
+                            continue
+                        if 'noticeInfoId' in link_on_docs:
+                            docs_names_block = soup_docs.find('div', class_='row pl-3').find_all('span', class_='count')
+                            docs_names = [[j.find_all('a')[1].get('href'), j.find_all('a')[1].get_text().strip()] for j in
+                                          docs_names_block]
+                        elif 'regNumber' in link_on_docs:
+                            docs_names_block = soup_docs.find('div', class_='blockFilesTabDocs').find_all('span',
+                                                                                                          class_='section__value')
+                            docs_names = [[j.find('a').get('href'), j.find('a').get_text().strip()] for j in
+                                          docs_names_block]
+                        else:
+                            docs_names = []
+                        for doc in docs_names:
+                            if 'https://zakupki.gov.ru' not in doc[0]:
+                                doc[0] = 'https://zakupki.gov.ru' + doc[0]
+                            cards[number][3].append(doc[1])
+                            cards[number][4].append(doc[0])
+                    except Exception as e:
+                        print('!--------------------------', url_word, link_on_docs, e)
+                continue
             else:
+                # total_pages = info.find('ul', class_='pages')
+                # if total_pages:
+                #     print(0)
+                #     total_pages = total_pages.find_all('li', class_='page')[-2].get_text()
+                #     print(total_pages, link)
+                # else:
+                #     print(1, link)
                 table = info.find('tbody', class_='tableBlock__body')
                 for delete in table.find_all('tr', class_=re.compile(r'truInfo_\d+')):
                     delete.decompose()
                 rows = table.find_all('tr', class_='tableBlock__row')
                 products = {}
                 for row in rows:
-                    col = row.find_all('td', class_='tableBlock__col')
-                    delete = col[2].find('div', class_='section__title')
-                    delete.decompose()
-                    products[col[2].get_text().strip()] = [col[4].get_text().strip(), re.sub(r'\xa0', '', col[6].get_text().strip())]
-            print(products, sep='\n')
-            break
-            cards[number] = [name, cost, link, products, []]
+                    try:
+                        col = row.find_all('td', class_='tableBlock__col')
+                        delete = col[2].find('div', class_='section__title')
+                        if delete:
+                            delete.decompose()
+                        products[col[2].get_text().strip()] = {'count': col[-3].get_text().strip(), 'cost': re.sub(r'\xa0', '', col[-1].get_text().strip())}
+                    except Exception as e:
+                        print('!----------', link)
+            cards[number] = {'name': name, 'cost': cost, 'link': link, 'products': products, 'link_on_docs': link_on_docs}
             word_cards[word].append(number)
-            print(cards[number])
-            break
-            response_docs = requests.get(link_on_docs, headers=headers)
-            while response_docs.status_code != 200:
-                time.sleep(2)
-                print(f'{datetime.now()}: Переподключение')
-                response_docs = requests.get(link_on_docs, headers=headers)
-            soup_docs = BeautifulSoup(response_docs.text, 'html.parser')
-            try:
-                if link_on_docs[-1] == '=':
-                    print('!--------------------------', url_word, number)
-                    continue
-                if 'noticeInfoId' in link_on_docs:
-                    docs_names_block = soup_docs.find('div', class_='row pl-3').find_all('span', class_='count')
-                    docs_names = [[j.find_all('a')[1].get('href'),  j.find_all('a')[1].get_text().strip()] for j in docs_names_block]
-                elif 'regNumber' in link_on_docs:
-                    docs_names_block = soup_docs.find('div', class_='blockFilesTabDocs').find_all('span', class_='section__value')
-                    docs_names = [[j.find('a').get('href'), j.find('a').get_text().strip()] for j in docs_names_block]
-                else:
-                    docs_names = []
-                for doc in docs_names:
-                    if 'https://zakupki.gov.ru' not in doc[0]:
-                        doc[0] = 'https://zakupki.gov.ru' + doc[0]
-                    cards[number][3].append(doc[1])
-                    cards[number][4].append(doc[0])
-            except Exception as e:
-                print('!--------------------------', response_docs.status_code, url_word, link_on_docs, e)
         print(f'{datetime.now()}: Поиск карточек: {len(word_cards)}/{len(words)}')
 
     save_result(f'results/{dir}/3_searching_links.txt', '\n'.join(urls))
@@ -264,16 +273,16 @@ def download_file(url, file_name,  save_path='files'):
 
 def make_request_to_ai(prompt, text, model=MODEL):
     def count_tokens(t):
-        if 'gpt' in model:
-            enc = tiktoken.encoding_for_model(model)
-            tokens = enc.encode(t)
-        elif 'Qwen' in model:
+        if 'qwen' in model.lower():
             try:
                 from transformers import AutoTokenizer
-                tokenizer  = AutoTokenizer.from_pretrained(model)
+                tokenizer = AutoTokenizer.from_pretrained('Qwen/Qwen2-72B-Instruct-GPTQ-Int8')
                 tokens = tokenizer.encode(t)
             except Exception as e:
                 print(f'Ошибка при подсчете токенов\n{e}')
+        elif 'gpt' in model:
+            enc = tiktoken.encoding_for_model(model.replace('openai/', ''))
+            tokens = enc.encode(t)
         return tokens
 
     tokens_full_text = len(count_tokens(text))
@@ -288,13 +297,13 @@ def make_request_to_ai(prompt, text, model=MODEL):
     try:
         answer = []
         prompt_tokens, completion_tokens = 0, 0
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64',
+            'Authorization': f'Bearer {AI_API_KEY}',
+            'Content-Type': 'application/json'
+        }
         for part_of_text in full_text:
             # print(f'Количество токенов: {len(count_tokens(part_of_text))}')
-            headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64',
-                'Authorization': f'Bearer {AI_API_KEY}',
-                'Content-Type': 'application/json'
-            }
             data = {
                 'model': model,
                 'messages': [{'role': 'user', 'content': part_of_text}, ]
@@ -336,79 +345,84 @@ def main():
     os.mkdir(f'results/{dir}')
 
     # категории товаров из файла (вручную) и ключевые (через ИИ по КТ)
-    # product_categories = get_text_from_file('product_category.txt')
-    # print(f'{datetime.now()}: Выделены категории товаров')
-    # key_words = make_request_to_ai(prompt_get_key_words, product_categories)
-    # prompt_tokens += key_words[1]
-    # completion_tokens += key_words[2]
-    # category_key_words = {}
-    # for pair in key_words[0].strip().split('\n'):
-    #     category, word = [i.strip() for i in pair.split(':')]
-    #     if category not in category_key_words:
-    #         category_key_words[category] = []
-    #     category_key_words[category].append(word)
-    # key_words = [word for category in category_key_words for word in category_key_words[category]]
-    # save_result(f'results/{dir}/1_key_words.txt', '\n'.join(key_words))
-    # save_result(f'results/{dir}/2_key_word_categories.txt', '\n'.join([f"{category}: {', '.join(category_key_words[category])}" for category in category_key_words]))
-    # print(f'{datetime.now()}: Выделены ключевые слова')
+    product_categories = get_text_from_file('product_category.txt')
+    print(f'{datetime.now()}: Выделены категории товаров')
+    key_words = make_request_to_ai(prompt_get_key_words, product_categories)
+    prompt_tokens += key_words[1]
+    completion_tokens += key_words[2]
+    category_key_words = {}
+    for pair in key_words[0].strip().split('\n'):
+        category, word = [i.strip() for i in pair.split(':')]
+        if category not in category_key_words:
+            category_key_words[category] = []
+        category_key_words[category].append(word)
+    key_words = [word for category in category_key_words for word in category_key_words[category]]
+    save_result(f'results/{dir}/1_key_words.txt', '\n'.join(key_words))
+    save_result(f'results/{dir}/2_key_word_categories.txt', '\n'.join([f"{category}: {', '.join(category_key_words[category])}" for category in category_key_words]))
+    print(f'{datetime.now()}: Выделены ключевые слова')
 
     # category_key_words = dict(list(category_key_words.items())[0:2])
-    # key_words = [word for category in category_key_words for word in category_key_words[category]]
-    category_key_words = {'блокнот': ['блокнот']}
-    key_words = ['блокнот']
+    # key_words = list(set([word for category in category_key_words for word in category_key_words[category]]))
+    # category_key_words = {'блокнот': ['блокнот']}
+    # key_words = ['блокнот']
     # карточки тендеров
     key_word_cards, cards = get_cards(key_words)
     category_cards = {}
     for category in category_key_words:
         category_cards[category] = [card for word in category_key_words[category] for card in key_word_cards[word]]
     print(f'{datetime.now()}: Собраны все карточки.')
-    save_result(f'results/{dir}/4_cards.txt', '\n'.join([f"{category}\n{'\n'.join([cards[card][2] for card in category_cards[category]])}\n" for category in category_cards]))
+    save_result(f'results/{dir}/4_cards.txt', '\n'.join([f"{category}\n{'\n'.join([cards[card]['link'] for card in category_cards[category]])}\n" for category in category_cards]))
 
-    return
-    # фильтр 1 (через ИИ по названию карточек)
-    cards_info = '\n'.join([f'{card}: {cards[card][0]}' for card in cards])
+    # фильтр 1 (через ИИ)
+    cards_info = '\n'.join([f'{card}: {', '.join([product for product in cards[card]['products']])}' for card in cards if 'products' in cards[card]])
     true_cards = make_request_to_ai(prompt_get_cards_1.replace('//Заменить1//', product_categories.replace('\n', ', ')), cards_info)
     prompt_tokens += true_cards[1]
     completion_tokens += true_cards[2]
+    print(len(cards))
     true_cards = [card.strip() for card in true_cards[0].split('\n')]
-    save_result(f'results/{dir}/5_filter_1.txt', '\n'.join([f"{category}\n{'\n'.join([cards[card][2] for card in category_cards[category] if card in true_cards])}\n" for category in category_cards]))
+    print(len(true_cards))
+    save_result(f'results/{dir}/5_filter_1.txt', '\n'.join([f"{category}\n{'\n'.join([cards[card]['link'] for card in category_cards[category] if card in true_cards])}\n" for category in category_cards]))
     print(f'{datetime.now()}: Отобраны релевантные карточки. Фильтр 1')
 
-    # файлы
-    cards_info = '\n'.join([f'{card}: {cards[card][3]}' for card in true_cards])
-    true_files = make_request_to_ai(prompt_get_files_names, cards_info)
-    prompt_tokens += true_files[1]
-    completion_tokens += true_files[2]
-    copy_dict = {}
-    for pair in true_files[0].strip().split('\n'):
-        card, file = [i.strip() for i in pair.split(':', 1)]
-        if card in cards:
-            if file in cards[card][3]:
-                copy_dict[card] = cards[card]
-                copy_dict[card][4] = cards[card][4][cards[card][3].index(file)]
-                copy_dict[card][3] = file
-    true_cards = copy_dict
-    save_result(f'results/{dir}/6_files_names.txt', '\n'.join([f"{category}\n{'\n'.join([cards[card][3] + '\t' + cards[card][2] for card in category_cards[category] if card in true_cards])}\n" for category in category_cards]))
-    for card in true_cards:
-        path = download_file(true_cards[card][4], card)
-        true_cards[card].append(get_text_from_file(path))
-    print(f'{datetime.now()}: Скачаны файлы из карточек')
+    save_result(f'results/{dir}/5_filter_1_not_true.txt', '\n'.join([f"{category}\n{'\n'.join([cards[card]['link'] for card in category_cards[category] if card not in true_cards])}\n" for category in category_cards]))
 
-    # фильтр 2 (через ИИ по содержимому файлов)
-    cards_info = '\n'.join([f'=========================================================\n{card} документ: {true_cards[card][-1]}' for card in true_cards if true_cards[card][-1]])
-    true_cards_info = make_request_to_ai(prompt_get_cards_2.replace('//Заменить1//',product_categories.replace('\n', ', ')), cards_info)
-    prompt_tokens += true_cards_info[1]
-    completion_tokens += true_cards_info[2]
-    copy_dict = {}
-    for pair in true_cards_info[0].strip().split('\n'):
-        if ':' in pair:
-            card, info = [i.strip() for i in pair.split(':', 1)]
-            if card in true_cards:
-                copy_dict[card] = true_cards[card]
-                copy_dict[card][-1] = info
-    true_cards = copy_dict
-    save_result(f'results/{dir}/7_filter_2.txt', '\n'.join([f"{category}\n{'\n'.join([cards[card][2] for card in category_cards[category] if card in true_cards])}\n" for category in category_cards]))
-    print(f'{datetime.now()}: Отобраны релевантные карточки. Фильтр 2')
+    return
+    # # файлы
+    # cards_info = '\n'.join([f'{card}: {cards[card][3]}' for card in cards if not 'products' in cards[card]])
+    # print(cards_info)
+    # true_files = make_request_to_ai(prompt_get_files_names, cards_info)
+    # prompt_tokens += true_files[1]
+    # completion_tokens += true_files[2]
+    # copy_dict = {}
+    # for pair in true_files[0].strip().split('\n'):
+    #     card, file = [i.strip() for i in pair.split(':', 1)]
+    #     if card in cards:
+    #         if file in cards[card][3]:
+    #             copy_dict[card] = cards[card]
+    #             copy_dict[card][4] = cards[card][4][cards[card][3].index(file)]
+    #             copy_dict[card][3] = file
+    # true_cards = copy_dict
+    # save_result(f'results/{dir}/6_files_names.txt', '\n'.join([f"{category}\n{'\n'.join([cards[card][3] + '\t' + cards[card][2] for card in category_cards[category] if card in true_cards])}\n" for category in category_cards]))
+    # for card in true_cards:
+    #     path = download_file(true_cards[card][4], card)
+    #     true_cards[card].append(get_text_from_file(path))
+    # print(f'{datetime.now()}: Скачаны файлы из карточек')
+
+    # # фильтр 2 (через ИИ по содержимому файлов)
+    # cards_info = '\n'.join([f'=========================================================\n{card} документ: {true_cards[card][-1]}' for card in true_cards if true_cards[card][-1]])
+    # true_cards_info = make_request_to_ai(prompt_get_cards_2.replace('//Заменить1//',product_categories.replace('\n', ', ')), cards_info)
+    # prompt_tokens += true_cards_info[1]
+    # completion_tokens += true_cards_info[2]
+    # copy_dict = {}
+    # for pair in true_cards_info[0].strip().split('\n'):
+    #     if ':' in pair:
+    #         card, info = [i.strip() for i in pair.split(':', 1)]
+    #         if card in true_cards:
+    #             copy_dict[card] = true_cards[card]
+    #             copy_dict[card][-1] = info
+    # true_cards = copy_dict
+    # save_result(f'results/{dir}/7_filter_2.txt', '\n'.join([f"{category}\n{'\n'.join([cards[card][2] for card in category_cards[category] if card in true_cards])}\n" for category in category_cards]))
+    # print(f'{datetime.now()}: Отобраны релевантные карточки. Фильтр 2')
 
     # парсинг файла
     file_text = get_text_from_file('Прайс ХАТБЕР 27.08.25 цены С НДС.xlsx', product_categories.split('\n'))
