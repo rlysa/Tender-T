@@ -88,8 +88,10 @@ def get_text_from_file(file_name='ПРАЙС РДК ИЮЛЬ ОПТ СО СК�
                             except:
                                 row_text += str(cell.value) + ' '
                         else:
-                            row_text += str(cell.value).lower() + ' '
+                            row_text += str(cell.value).lower().replace('\n', '') + ' '
                 if words:
+                    if 'цена' in row_text or 'название' in row_text or 'артикул' in row_text or 'стоимость' in row_text:
+                        file_text['title'] = [row_text]
                     for i in words:
                         if i in row_text:
                             if i not in file_text:
@@ -99,7 +101,6 @@ def get_text_from_file(file_name='ПРАЙС РДК ИЮЛЬ ОПТ СО СК�
                     file_text += row_text + '\n'
         while '\n\n' in file_text:
             file_text = file_text.replace('\n\n', '\n')
-
         return file_text
     except Exception as e:
         print(f'Ошибка при чтении файла {file_name} \n{e}')
@@ -168,7 +169,7 @@ def get_cards(words):
         for block in blocks:
             number = block.find('div', class_='registry-entry__header-mid__number').get_text().strip().replace('№ ', '')
             name = block.find('div', class_='registry-entry__body-value').get_text().strip()
-            cost = block.find('div', class_='price-block__value').get_text().strip()
+            cost = block.find('div', class_='price-block__value').get_text().strip().split(' ')[0]
             link = f'https://zakupki.gov.ru{block.find('div', class_='registry-entry__header-mid__number').find('a').get('href')}'
             link_on_docs = f'https://zakupki.gov.ru{block.find('div', class_='href d-flex').find('a').get('href')}'
             soup_info = make_request(link)
@@ -216,6 +217,8 @@ def get_cards(words):
                 table = info.find('tbody', class_='tableBlock__body')
                 for delete in table.find_all('tr', class_=re.compile(r'truInfo_\d+')):
                     delete.decompose()
+                for delete in table.find_all('tr', class_=re.compile(r'medInfo0_\d+')):
+                    delete.decompose()
                 rows = table.find_all('tr', class_='tableBlock__row')
                 products = {}
                 for row in rows:
@@ -224,10 +227,13 @@ def get_cards(words):
                         delete = col[2].find('div', class_='section__title')
                         if delete:
                             delete.decompose()
-                        products[col[2].get_text().strip()] = {'count': col[-3].get_text().strip(), 'cost': re.sub(r'\xa0', '', col[-1].get_text().strip())}
+                        count = col[-3].get_text().strip()
+                        if count == '':
+                            count = '1'
+                        products[col[2].get_text().strip()] = {'count': count, 'cost': re.sub(r'\xa0', '', col[-1].get_text().strip())}
                     except Exception as e:
                         print('!----------', link)
-            cards[number] = {'name': name, 'cost': cost, 'link': link, 'products': products, 'link_on_docs': link_on_docs}
+            cards[number] = {'name': name, 'cost': re.sub(r'\xa0', '', cost.strip()), 'link': link, 'products': products, 'link_on_docs': link_on_docs}
             word_cards[word].append(number)
         print(f'{datetime.now()}: Поиск карточек: {len(word_cards)}/{len(words)}')
 
@@ -294,7 +300,7 @@ def make_request_to_ai(prompt, text, model=MODEL):
     else:
         full_text = [prompt + text]
 
-    try:
+    # try:
         answer = []
         prompt_tokens, completion_tokens = 0, 0
         headers = {
@@ -314,11 +320,12 @@ def make_request_to_ai(prompt, text, model=MODEL):
             prompt_tokens += response.json()['usage']['prompt_tokens']
             completion_tokens += response.json()['usage']['completion_tokens']
             print(f'{datetime.now()}: Обработка запроса: {len(answer)}/{len(full_text)}')
+        print(answer)
         return ['\n'.join(answer), prompt_tokens, completion_tokens]
-    except Exception as e:
-        print(f'Ошибка в отправке запроса модели\n{e}')
-        if len(answer) != 0:
-            return ['\n'.join(answer), prompt_tokens, completion_tokens]
+    # except Exception as e:
+    #     print(f'Ошибка в отправке запроса модели\n{e}')
+    #     if len(answer) != 0:
+    #         return ['\n'.join(answer), prompt_tokens, completion_tokens]
         # print(f'Wait')
         # time.sleep(120)
         # print(f'Repeat')
@@ -347,24 +354,24 @@ def main():
     # категории товаров из файла (вручную) и ключевые (через ИИ по КТ)
     product_categories = get_text_from_file('product_category.txt')
     print(f'{datetime.now()}: Выделены категории товаров')
-    key_words = make_request_to_ai(prompt_get_key_words, product_categories)
-    prompt_tokens += key_words[1]
-    completion_tokens += key_words[2]
-    category_key_words = {}
-    for pair in key_words[0].strip().split('\n'):
-        category, word = [i.strip() for i in pair.split(':')]
-        if category not in category_key_words:
-            category_key_words[category] = []
-        category_key_words[category].append(word)
-    key_words = [word for category in category_key_words for word in category_key_words[category]]
-    save_result(f'results/{dir}/1_key_words.txt', '\n'.join(key_words))
-    save_result(f'results/{dir}/2_key_word_categories.txt', '\n'.join([f"{category}: {', '.join(category_key_words[category])}" for category in category_key_words]))
-    print(f'{datetime.now()}: Выделены ключевые слова')
+    # key_words = make_request_to_ai(prompt_get_key_words, product_categories)
+    # prompt_tokens += key_words[1]
+    # completion_tokens += key_words[2]
+    # category_key_words = {}
+    # for pair in key_words[0].strip().split('\n'):
+    #     category, word = [i.strip() for i in pair.split(':')]
+    #     if category not in category_key_words:
+    #         category_key_words[category] = []
+    #     category_key_words[category].append(word)
+    # key_words = [word for category in category_key_words for word in category_key_words[category]]
+    # save_result(f'results/{dir}/1_key_words.txt', '\n'.join(key_words))
+    # save_result(f'results/{dir}/2_key_word_categories.txt', '\n'.join([f"{category}: {', '.join(category_key_words[category])}" for category in category_key_words]))
+    # print(f'{datetime.now()}: Выделены ключевые слова')
 
     # category_key_words = dict(list(category_key_words.items())[0:2])
     # key_words = list(set([word for category in category_key_words for word in category_key_words[category]]))
-    # category_key_words = {'блокнот': ['блокнот']}
-    # key_words = ['блокнот']
+    category_key_words = {'блокнот': ['блокнот']}
+    key_words = ['блокнот']
     # карточки тендеров
     key_word_cards, cards = get_cards(key_words)
     category_cards = {}
@@ -380,13 +387,20 @@ def main():
     completion_tokens += true_cards[2]
     print(len(cards))
     true_cards = [card.strip() for card in true_cards[0].split('\n')]
-    print(len(true_cards))
     save_result(f'results/{dir}/5_filter_1.txt', '\n'.join([f"{category}\n{'\n'.join([cards[card]['link'] for card in category_cards[category] if card in true_cards])}\n" for category in category_cards]))
-    print(f'{datetime.now()}: Отобраны релевантные карточки. Фильтр 1')
-
     save_result(f'results/{dir}/5_filter_1_not_true.txt', '\n'.join([f"{category}\n{'\n'.join([cards[card]['link'] for card in category_cards[category] if card not in true_cards])}\n" for category in category_cards]))
 
-    return
+    copy_dict = {}
+    for category in category_cards:
+        for card in category_cards[category]:
+            if card in true_cards:
+                if category not in copy_dict:
+                    copy_dict[category] = {}
+                copy_dict[category][card] = cards[card]
+    category_cards = copy_dict
+    print(len(true_cards))
+    print(f'{datetime.now()}: Отобраны релевантные карточки. Фильтр 1')
+
     # # файлы
     # cards_info = '\n'.join([f'{card}: {cards[card][3]}' for card in cards if not 'products' in cards[card]])
     # print(cards_info)
@@ -425,38 +439,70 @@ def main():
     # print(f'{datetime.now()}: Отобраны релевантные карточки. Фильтр 2')
 
     # парсинг файла
-    file_text = get_text_from_file('Прайс ХАТБЕР 27.08.25 цены С НДС.xlsx', product_categories.split('\n'))
-    for word in file_text:
-        file_text[word] = '\n'.join(file_text[word])
-    save_result(f'results/{dir}/8_products.txt', '\n\n'.join([category + '\n' + file_text[category] for category in product_categories.split('\n') if category in file_text]))
+    # file_text = get_text_from_file('Прайс ХАТБЕР 27.08.25 цены С НДС.xlsx', product_categories.split('\n'))
+    file_text = get_text_from_file('Прайс ХАТБЕР 27.08.25 цены С НДС.xlsx', ['блокнот'])
+    title = '\n'.join(file_text['title'])
+    file_text.pop('title')
+    category_products = {}
+    products = {}
+    for category in file_text:
+        file_text[category] = '\n'.join(file_text[category][0:100])
+        # print(prompt_get_key_info_our_products + title + '\n' + file_text[word])
+        answer = make_request_to_ai(prompt_get_key_info_our_products + title, file_text[category])
+        prompt_tokens += answer[1]
+        completion_tokens += answer[2]
+        category_products[category] = []
+        for product in answer[0].strip().replace('\n\n', '\n').split('\n'):
+            article, name_cost = [i.strip() for i in product.strip().split(':', 1)]
+            name, cost = [i.strip() for i in name_cost.split(';', 1)]
+            category_products[category].append(article)
+            products[article] = [name, cost]
+        break
+    save_result(f'results/{dir}/8_products.txt', '\n\n'.join([category + '\n' + '\n'.join([product + ': ' + products[product][0] + '; ' + products[product][1] for product in category_products[category]]) for category in category_products]))
+
+    margin_info = ''
+    for category in category_products:
+        if category in category_cards:
+            answer = make_request_to_ai(promt_count_margin.replace('//Заменить//', '\n'.join([product + ': ' + products[product][0] + '; ' + products[product][1] for product in category_products[category]])), '\n'.join([card + ': ' + '; '.join([pr for pr in category_cards[category][card]['products']]) for card in category_cards[category]]))
+            prompt_tokens += answer[1]
+            completion_tokens += answer[2]
+            margin_info += answer[0]
+    save_result(f'results/{dir}/9_margin_info.txt', margin_info)
+    print(f'{datetime.now()}: Подготовлены данные для подсчета маржи')
 
     # подсчет маржи
-    margin_info = []
-    for category in category_cards:
-        if category in category_cards:
-            cards_info = '\n'.join([f'{card}: {true_cards[card][1]}, {true_cards[card][-1]}' for card in category_cards[category] if card in true_cards])
-            margin_info.append('Информация по нашим товарам:\n' + file_text[category] + '\nИнформация по карточкам:\n' + cards_info)
-    margin_info = '\n'.join(margin_info)
-    margin_info = make_request_to_ai(promt_count_margin, margin_info)
-    print(f'{datetime.now()}: Подготовлены данные для подсчета маржи')
-    save_result(f'results/{dir}/9_margin_info.txt', margin_info[0])
-    prompt_tokens += margin_info[1]
-    completion_tokens += margin_info[2]
-    print(
-        f'Общая стоимость: {prompt_tokens / 1000 * COST_INPUT_TOKENS * 81} + {completion_tokens / 1000 * COST_OUTPUT_TOKENS * 81} = {prompt_tokens / 1000 * COST_INPUT_TOKENS * 81 + completion_tokens / 1000 * COST_OUTPUT_TOKENS * 81}')
     margin = {}
-    for product in margin_info[0].strip().split('\n'):
-        num, other = [i.strip() for i in product.split(':')]
-        if num in true_cards:
-            print(other)
-            our_pr, our_cost, their_cost, n = [i.strip() for i in other.split(';')]
-            margin[num] = float(their_cost) - float(our_cost) * float(n)
-    margin = dict(sorted(margin.items(), key=lambda x: x[1], reverse=True))
+    for pair in margin_info.strip().split('\n'):
+        card, their_our = [i.strip() for i in pair.strip().split(':', 1)]
+        their, our = [i.strip() for i in their_our.split(';', 1)]
+        if card not in margin:
+            margin[card] = [[], []]
+        margin[card][0].append(their)
+        margin[card][1].append(our)
+
+    for card in margin:
+        m, p = 0, 0
+        try:
+            for i in range(len(margin[card][0])):
+                m += float(cards[card]['products'][margin[card][0][i]]['cost'].replace(',', '.')) - float(cards[card]['products'][margin[card][0][i]]['count'].replace(',', '.')) * float(products[margin[card][1][i]][-1].replace(',', '.'))
+                p += float(cards[card]['products'][margin[card][0][i]]['cost'].replace(',', '.'))
+        except Exception as e:
+            print(card, margin[card], cards[card], e)
+        margin[card].append(m)
+        margin[card].append(p)
+    save_result(f'results/{dir}/10_result.txt', '\n'.join([' '.join([' '.join(margin[card][0]), ' '.join(margin[card][1]), str(margin[card][-2])]) for card in margin]))
+
     result = ''
-    for product in margin:
-        result += f'{true_cards[product][2]}\nМаржа: {margin[product]}\n\n'
-    print(result)
-    save_result(f'results/{dir}/10_result.txt', margin_info[0], result)
+    for card in margin:
+        try:
+            result += f'[{cards[card]["name"]}]({cards[card]["link"]})\n{", ".join(margin[card][1])}\nМаржа: {margin[card][-2]}\nПокрываемость: {margin[card][-1] / float(cards[card]["cost"].replace(',', '.')) * 100}%\n\n'
+        except Exception as e:
+            print(margin[card], cards[card])
+    # margin = dict(sorted(margin.items(), key=lambda x: x[1], reverse=True))
+
+
+    save_result(f'results/{dir}/10_result.txt', result)
+    print(f'Общая стоимость: {prompt_tokens / 1000 * COST_INPUT_TOKENS * 81} + {completion_tokens / 1000 * COST_OUTPUT_TOKENS * 81} = {prompt_tokens / 1000 * COST_INPUT_TOKENS * 81 + completion_tokens / 1000 * COST_OUTPUT_TOKENS * 81}')
     # добавить обработку синонимичных слов
 
 if __name__ == '__main__':
