@@ -1,15 +1,15 @@
 import re
 import time
 import requests
-from bs4 import BeautifulSoup, NavigableString
+from bs4 import BeautifulSoup
 from datetime import date, datetime
 import tiktoken
 import mimetypes
 import os
 import urllib.parse
 
-from config import *
-from prompts import *
+from src.config import *
+from src.prompts import *
 
 
 def get_text_from_file(file_name='ПРАЙС РДК ИЮЛЬ ОПТ СО СКИДКОЙ.pdf', words=None):
@@ -142,12 +142,15 @@ def get_cards(words):
         headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64',
                    'Authorization': f'Bearer {ZAKUPKI_TOKEN}',
                    'Content-Type': 'application/json'}
-        response = requests.get(url, headers=headers)
-        while response.status_code != 200:
-            time.sleep(2)
-            print(f'{datetime.now()}: Переподключение')
+        try:
             response = requests.get(url, headers=headers)
-        soup = BeautifulSoup(response.text, 'html.parser')
+            while response.status_code != 200:
+                time.sleep(2)
+                print(f'{datetime.now()}: Переподключение')
+                response = requests.get(url, headers=headers)
+            soup = BeautifulSoup(response.text, 'html.parser')
+        except Exception as e:
+            print(response.status_code, e)
         return soup
 
     word_cards, cards, urls = {}, {}, []
@@ -298,7 +301,7 @@ def get_cards(words):
     return [word_cards, cards]
 
 
-def download_file(url, file_name,  save_path='files'):
+def download_file(url, file_name,  save_path='../files'):
     headers = {
         'Authorization': f'Bearer {ZAKUPKI_TOKEN}',
         'User-Agent': 'Mozilla/5.0 (compatible; FileDownloader/1.0)'
@@ -369,6 +372,7 @@ def make_request_to_ai(prompt, text, model=MODEL):
         'Content-Type': 'application/json'
     }
     for part_of_text in full_text:
+        print(part_of_text)
         data = {
             'model': model,
             'messages': [{'role': 'user', 'content': part_of_text}, ]
@@ -412,7 +416,7 @@ def main():
     os.mkdir(f'results/{dir}')
 
     # категории товаров из файла (вручную) и ключевые (через ИИ по КТ)
-    product_categories = get_text_from_file('product_category.txt')
+    product_categories = get_text_from_file('../input/product_category.txt')
     print(f'{datetime.now()}: Выделены категории товаров')
     # key_words = make_request_to_ai(prompt_get_key_words, product_categories)
     # prompt_tokens += key_words[1]
@@ -430,8 +434,8 @@ def main():
 
     # category_key_words = dict(list(category_key_words.items())[0:2])
     # key_words = list(set([word for category in category_key_words for word in category_key_words[category]]))
-    category_key_words = {'тетрадь': ['тетрадь']}
-    key_words = ['тетрадь']
+    category_key_words = {'тетрадь': ['тетрадь'], 'блокнот': ['блокнот']}
+    key_words = ['тетрадь', 'блокнот']
     # карточки тендеров
     key_word_cards, cards = get_cards(key_words)
     print(f'{datetime.now()}: Собраны все карточки.')
@@ -446,10 +450,11 @@ def main():
         completion_tokens += true_cards_answ[2]
         true_cards_answ = [card.strip() for card in true_cards_answ[0].split('\n')]
         for card in true_cards_answ:
-            true_cards.append(card)
+            if card in cards:
+                true_cards.append(card)
         category_cards[category] = true_cards_answ
     print(f'{datetime.now()}: Отобраны релевантные карточки. Фильтр 1')
-    save_result(f'results/{dir}/5_filter_1.txt', '\n'.join([f"{category}\n{'\n'.join([cards[card]['link'] for card in category_cards[category]])}\n" for category in category_cards]))
+    save_result(f'results/{dir}/5_filter_1.txt', '\n'.join([f"{category}\n{'\n'.join([cards[card]['link'] for card in category_cards[category] if card in cards])}\n" for category in category_cards]))
     save_result(f'results/{dir}/5_filter_1_not_true.txt', '\n'.join([cards[card]['link'] for card in cards if card not in true_cards]))
     # for card in cards:
     #     print(card)
@@ -496,7 +501,7 @@ def main():
 
     # парсинг файла
     # file_text = get_text_from_file('Прайс ХАТБЕР 27.08.25 цены С НДС.xlsx', product_categories.split('\n'))
-    file_text = get_text_from_file('Прайс ХАТБЕР 27.08.25 цены С НДС.xlsx', ['блокнот', 'тетрадь'])
+    file_text = get_text_from_file('../input/Прайс ХАТБЕР 27.08.25 цены С НДС.xlsx', ['блокнот', 'тетрадь'])
     title = '\n'.join(file_text['title'])
     file_text.pop('title')
     category_products = {}
@@ -699,13 +704,15 @@ def main():
 # 092153: тетрадь для записи терминов и определений 48л а5ф оригинальный блок на скобе; 83.63''']
 #         answer = answer if category == 'блокнот' else answer2
         for product in answer[0].strip().replace('\n\n', '\n').split('\n'):
-            article, name_cost = [i.strip() for i in product.strip().split(':', 1)]
-            name, cost = [i.strip() for i in name_cost.split(';', 1)]
-            category_products[category].append(article)
-            products[article] = [name, cost]
+            if len(product.strip().split(':', 1)) == 2:
+                article, name_cost = [i.strip() for i in product.strip().split(':', 1)]
+                if len(name_cost.split(';', 1)) == 2:
+                    name, cost = [i.strip() for i in name_cost.split(';', 1)]
+                    category_products[category].append(article)
+                    products[article] = [name, cost]
     save_result(f'results/{dir}/8_products.txt', '\n\n'.join([category + '\n' + '\n'.join([product + ': ' + products[product][0] + '; ' + products[product][1] for product in category_products[category]]) for category in category_products]))
 
-    category = 'тетрадь'
+    # category = 'тетрадь'
     margin_info = ''
     for category in category_products:
         if category in category_cards:
@@ -714,7 +721,6 @@ def main():
             prompt_tokens += answer[1]
             completion_tokens += answer[2]
             margin_info += answer[0]
-            print(answer[0], '\n=========================================\n')
     save_result(f'results/{dir}/9_margin_info.txt', margin_info)
     print(f'{datetime.now()}: Подготовлены данные для подсчета маржи')
 
