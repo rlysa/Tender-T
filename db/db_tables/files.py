@@ -8,4 +8,4 @@ class Files(SqlAlchemyBase):
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True, unique=True, autoincrement=True)
     name = sqlalchemy.Column(sqlalchemy.VARCHAR)
     path = sqlalchemy.Column(sqlalchemy.VARCHAR)
-    script_id = sqlalchemy.Column(sqlalchemy.Integer, foreign_keys=True)
+    script_id = sqlalchemy.Column(sqlalchemy.Integer)

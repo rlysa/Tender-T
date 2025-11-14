@@ -8,7 +8,7 @@ import mimetypes
 import os
 import urllib.parse
 
-from src.config import *
+from config import *
 from src.prompts import *
 
 

@@ -1,3 +1,4 @@
+import os.path
 import sqlalchemy
 import sqlalchemy.orm as orm
 import sqlalchemy.ext.declarative as dec
@@ -11,9 +12,6 @@ __factory = None
 def global_init(db_file):
     global __factory
     if __factory:
-        return
-
-    if not db_file.strip():
         return
 
     connection_str = f'sqlite:///{db_file.strip()}?check_same_thread=False'
