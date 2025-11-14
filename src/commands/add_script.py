@@ -3,11 +3,11 @@ from aiogram.filters import Command
 from aiogram.types import Message
 from aiogram.fsm.context import FSMContext
 import os
-import time
 
 from .forms import Form
 from src.__all_func import *
 from src.prompts import *
+from db.db_requests.new_script import add_new_script
 
 
 router = Router()
@@ -112,7 +112,12 @@ async def cmd_add_script_f2(message: Message, state: FSMContext):
     except Exception as e:
         await message.answer(f'Не удалось обработать файл')
         return
-    # добавление в бд
+    add_new_script_to_db(data['name'], message.from_user.id, product_categories, data['key_words'], products)
     os.remove(save_path)
     await message.answer('Сценарий создан')
     await state.set_state(Form.main_st)
+
+
+def add_new_script_to_db(name, user_id, product_categories, key_words, products):
+    product_categories = '\n'.join(product_categories)
+    add_new_script(name, user_id, product_categories, key_words, products)

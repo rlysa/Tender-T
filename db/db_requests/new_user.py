@@ -1,5 +1,4 @@
 import sqlite3
-import os.path
 from config import DB_NAME
 
 

@@ -6,6 +6,6 @@ class Files(SqlAlchemyBase):
     __tablename__ = 'files'
 
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True, unique=True, autoincrement=True)
-    name = sqlalchemy.Column(sqlalchemy.VARCHAR)
     path = sqlalchemy.Column(sqlalchemy.VARCHAR)
+    name = sqlalchemy.Column(sqlalchemy.VARCHAR)
     script_id = sqlalchemy.Column(sqlalchemy.Integer)
