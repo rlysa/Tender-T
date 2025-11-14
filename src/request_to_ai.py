@@ -21,7 +21,6 @@ def make_request_to_ai(prompt, text, model=MODEL):
             enc = tiktoken.encoding_for_model(model.replace('openai/', ''))
             tokens = enc.encode(t)
         return tokens
-
     tokens_full_text = len(count_tokens(text))
     tokens_prompt = len(count_tokens(prompt))
     if tokens_full_text + tokens_prompt > MAX_TOKENS:
@@ -30,7 +29,6 @@ def make_request_to_ai(prompt, text, model=MODEL):
         full_text = [prompt + text[i * max_tokens_text:i * max_tokens_text + MAX_TOKENS] for i in range(0, count)]
     else:
         full_text = [prompt + text]
-
     answer = []
     prompt_tokens, completion_tokens = 0, 0
     headers = {
@@ -41,6 +39,7 @@ def make_request_to_ai(prompt, text, model=MODEL):
 
     try:
         for part_of_text in full_text:
+            print(part_of_text)
             data = {
                 'model': model,
                 'messages': [{'role': 'user', 'content': part_of_text}, ]

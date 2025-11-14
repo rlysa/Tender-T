@@ -12,7 +12,7 @@ def get_text_from_file(file_name):
     try:
         extension = file_name.split('.')[-1].lower()
         if extension == 'txt':
-            with open(file_name) as file:
+            with open(file_name, encoding='utf-8') as file:
                 file_text = '\n'.join([i.strip() for i in file.readlines()])
 
         elif extension == 'xlsx':
@@ -45,8 +45,10 @@ def get_text_from_file(file_name):
 
 def get_text_from_file_by_words(file_name, words):
     file_text = ''
+    words = [word.lower() for word in words]
     try:
-        file_text = {} if words else ''
+        file_text = {}
+        file_text['title'] = ''
         from openpyxl import load_workbook
         from openpyxl.utils import get_column_letter
         from openpyxl.styles.numbers import BUILTIN_FORMATS
@@ -66,14 +68,40 @@ def get_text_from_file_by_words(file_name, words):
                     else:
                         row_text += str(cell.value).lower().replace('\n', '') + ' '
             if 'цена' in row_text or 'название' in row_text or 'артикул' in row_text or 'стоимость' in row_text:
-                file_text['title'] = [row_text]
+                file_text['title'] += f'{row_text}\n'
             for i in words:
                 if i in row_text:
                     if i not in file_text:
-                        file_text[i] = []
-                    file_text[i].append(row_text)
-        while '\n\n' in file_text:
-            file_text = file_text.replace('\n\n', '\n')
+                        file_text[i] = ''
+                    file_text[i] += f'{row_text}\n'
+        for category in file_text:
+            while '\n\n' in file_text[category]:
+                file_text[category] = file_text[category].replace('\n\n', '\n')
     except Exception as e:
         print(f'Ошибка при чтении файла {file_name} \n{e}')
     return file_text
+
+
+if __name__ == '__main__':
+    file_text = get_text_from_file_by_words('../input/Прайс ХАТБЕР 27.08.25 цены С НДС.xlsx',  ['блокнот', 'тетрадь'])
+    print(file_text)
+    title = '\n'.join(file_text['title'])
+    file_text.pop('title')
+    category_products = {}
+    products = {}
+    print(0)
+    for category in file_text:
+        file_text[category] = '\n'.join(file_text[category])
+        from request_to_ai import make_request_to_ai
+        from prompts import prompt_get_key_info_our_products
+        answer = make_request_to_ai(prompt_get_key_info_our_products + title, file_text[category])
+        category_products[category] = []
+        print(answer[0])
+        for product in answer[0].strip().replace('\n\n', '\n').split('\n'):
+            if len(product.strip().split(':', 1)) == 2:
+                article, name_cost = [i.strip() for i in product.strip().split(':', 1)]
+                if len(name_cost.split(';', 1)) == 2:
+                    name, cost = [i.strip() for i in name_cost.split(';', 1)]
+                    category_products[category].append(article)
+                    products[article] = [name, cost]
+        print('\n\n'.join([category + '\n' + '\n'.join([product + ': ' + products[product][0] + '; ' + products[product][1] for product in category_products[category]]) for category in category_products]))
