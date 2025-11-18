@@ -39,7 +39,6 @@ def make_request_to_ai(prompt, text, model=MODEL):
 
     try:
         for part_of_text in full_text:
-            print(part_of_text)
             data = {
                 'model': model,
                 'messages': [{'role': 'user', 'content': part_of_text}, ]

@@ -1,5 +1,6 @@
 import sqlite3
 import os
+from pathlib import Path
 
 from config import DB_NAME
 from src.__all_func import save_result
@@ -9,8 +10,11 @@ def add_new_script(name, user_id, product_categories, key_words, products):
     connection = sqlite3.connect(DB_NAME)
     cursor = connection.cursor()
     new_script = cursor.execute('''INSERT INTO scripts (name, user_id) VALUES (?, ?) RETURNING id''', (name, user_id)).fetchone()[0]
-    path = f'../../files/{new_script}'
-    os.mkdir(f'{path}')
+    project_root = Path(__file__).parent.parent.parent
+    path = project_root / 'files' / f'{new_script}'
+
+    os.makedirs(path, exist_ok=True)
+    path = f'{path}'.replace('\\', '/')
     save_result(f'{path}/categories.txt', product_categories)
     save_result(f'{path}/keywords.txt', key_words)
     save_result(f'{path}/products.txt', products)
@@ -24,4 +28,4 @@ def add_new_script(name, user_id, product_categories, key_words, products):
 
 
 if __name__ == '__main__':
-    add_new_script('s1', '123456789', '1', '2', '3')
+    print(os.path.abspath('files'))

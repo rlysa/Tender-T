@@ -35,18 +35,23 @@ def get_categories_key_words(file_name='../input/product_category.txt'):
     return product_categories, category_key_words
 
 
-def filter_lots(category_lots, lots):
+def filter_lots(categories, lots):
     global prompt_tokens, completion_tokens
     category_true_lots = {}
-    for category in category_lots:
-        category_lots_all = [f'{lot}: {lots[lot]["name"]}' for lot in category_lots[category]]
-        if not category_lots_all:
-            continue
-        lots_info = '\n'.join([f'{lot}: {lots[lot]["name"]}' for lot in category_lots[category]])
-        true_lots_answ = make_request_to_ai(prompt_filter.replace('//Заменить1//', category), lots_info)
-        prompt_tokens += true_lots_answ[1]
-        completion_tokens += true_lots_answ[2]
-        category_true_lots[category] = [lot.strip() for lot in true_lots_answ[0].split('\n') if lot.strip() in lots]
+    # for category in category_lots:
+    #     category_lots_all = [f'{lot}: {lots[lot]["name"]}' for lot in category_lots[category]]
+    #     if not category_lots_all:
+    #         continue
+    #     lots_info = '\n'.join([f'{lot}: {lots[lot]["name"]}' for lot in category_lots[category]])
+    #     true_lots_answ = make_request_to_ai(prompt_filter.replace('//Заменить1//', category), lots_info)
+    #     prompt_tokens += true_lots_answ[1]
+    #     completion_tokens += true_lots_answ[2]
+    #     category_true_lots[category] = [lot.strip() for lot in true_lots_answ[0].split('\n') if lot.strip() in lots]
+    for category in categories:
+        category_true_lots[category] = []
+        for lot in lots:
+            if category.lower() in lots[lot]["name"].lower():
+                category_true_lots[category].append(lot)
     print(f'{datetime.now()}: Отобраны релевантные для каждой категории лоты. Фильтр 1')
     return category_true_lots
 
@@ -59,24 +64,25 @@ def main():
     product_categories, category_key_words = get_categories_key_words()
 
     # карточки тендеров
-    category_lots, cards, card_lots, lots, urls = get_cards(category_key_words)
+    cards, urls = get_cards(category_key_words)
+    card_lots, lots = get_lots([[card, cards[card]['link']] for card in cards])
     save_result(f'../results/{dir}/3_searching_links.txt', '\n'.join(urls))
     print(f'{datetime.now()}: Собраны все карточки.')
     save_result(f'../results/{dir}/4_cards.txt', '\n'.join(['; '.join([str(cards[card][i]) for i in cards[card]]) for card in cards]))
 
-    category_true_lots = filter_lots(category_lots, lots)
+    category_true_lots = filter_lots(product_categories, lots)
 
     lot_card = {}
     for card in card_lots:
         for lot in card_lots[card]:
             lot_card[lot] = card
     save_result(f'../results/{dir}/5_filter_1.txt', '\n'.join(
-        [category + '\n' + '\n'.join([f"{lot_card[lot]}: {lot} {lots[lot]["name"]}" for lot in category_true_lots[category]]) + '\n' for category in category_lots]))
-    save_result(f'../results/{dir}/5_filter_1_not_true.txt', '\n'.join(
-        [category + '\n' + '\n'.join([f"{lot_card[lot]}: {lot} {lots[lot]["name"]}" for lot in category_lots[category] if lot not in category_true_lots[category]]) + '\n' for category in category_lots]))
+        [category + '\n' + '\n'.join([f"{lot_card[lot]}: {lot} {lots[lot]["name"]}" for lot in category_true_lots[category]]) + '\n' for category in product_categories]))
+    save_result(f'../results/{dir}/5_filter_1_not_true.txt', '\n'.join([f"{lot_card[lot]}: {lot} {lots[lot]["name"]}" for lot in lots if lot not in [lot for category in category_true_lots for lot in category_true_lots[category]]]))
 
     # парсинг файла
-    file_text = get_text_from_file_by_words('../input/Прайс ХАТБЕР 27.08.25 цены С НДС.xlsx',  product_categories[0:2])
+    file_text = get_text_from_file('../input/Прайс ХАТБЕР 27.08.25 цены С НДС.xlsx')
+    file_text = get_text_by_words(file_text, product_categories[0:2])
     title = '\n'.join(file_text['title'])
     file_text.pop('title')
     category_products = {}

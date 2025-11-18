@@ -17,9 +17,9 @@ async def cmd_start(message: Message, state: FSMContext):
     await message.answer(f'Добро пожаловать!\nЭто бот для отслеживания тендеров по заданным сценариям\nДля добавления нового сценария отправьте /add_script')
 
 
-@router.message(Form.main_st)
-async def main(message: Message, state: FSMContext):
-    await message.answer('Некорректный запрос')
+# @router.message(Form.main_st)
+# async def main(message: Message, state: FSMContext):
+#     await message.answer('Некорректный запрос')
 
 
 def add_new_user_in_db(user_id):

@@ -1,6 +1,6 @@
 from aiogram import Router
 from aiogram.filters import Command
-from aiogram.types import Message
+from aiogram.types import Message, FSInputFile
 from aiogram.fsm.context import FSMContext
 import os
 
@@ -94,7 +94,8 @@ async def cmd_add_script_f2(message: Message, state: FSMContext):
     try:
         data = await state.get_data()
         product_categories = data['product_categories']
-        file_text = get_text_from_file_by_words(save_path, product_categories[0:2])
+        file_text = get_text_from_file(save_path)
+        file_text = get_text_by_words(file_text, product_categories[0:2])
         title = file_text['title']
         file_text.pop('title')
         products = []
@@ -108,6 +109,7 @@ async def cmd_add_script_f2(message: Message, state: FSMContext):
                         name, cost = [i.strip() for i in name_cost.split(';', 1)]
                         products.append(f'{category};{article};{name};{cost}')
         products = '\n'.join(products)
+        print(products)
         await message.answer(f'Файл обработан')
     except Exception as e:
         await message.answer(f'Не удалось обработать файл')
@@ -116,6 +118,11 @@ async def cmd_add_script_f2(message: Message, state: FSMContext):
     os.remove(save_path)
     await message.answer('Сценарий создан')
     await state.set_state(Form.main_st)
+
+    documents = get_tender_cards(message.from_user.id)
+    for doc in documents:
+        document_file = FSInputFile(doc)
+        await message.answer_document(document=document_file)
 
 
 def add_new_script_to_db(name, user_id, product_categories, key_words, products):
