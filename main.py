@@ -11,6 +11,7 @@ from config import BOT_TOKEN, DB_NAME
 from src.__routers import routers
 from db.db_tables.db_session import global_init
 from db.db_requests.get_uesrs import get_users
+from src.commands.add_script import start_scenario_manager
 
 # logging.basicConfig(level=logging.INFO)
 # logger = logging.getLogger(__name__)
@@ -38,34 +39,12 @@ async def send_timed_message():
                 pass
 
 
-async def timer_worker():
-    while True:
-        try:
-
-            await send_timed_message()
-            await asyncio.sleep(TIMER_INTERVAL)
-        except asyncio.CancelledError:
-            break
-        except Exception as e:
-            # logger.error(f'Ошибка в рабочем процессе таймера: {e}')
-            await asyncio.sleep(60)
-
-
-async def start_timer():
-    global timer_task
-    timer_task = asyncio.create_task(timer_worker())
-
-
-async def on_startup():
-    await start_timer()
-
-
 async def on_shutdown():
     await bot.session.close()
 
 
 async def main():
-    await on_startup()
+    await start_scenario_manager()
     try:
         await dp.start_polling(bot)
     finally:

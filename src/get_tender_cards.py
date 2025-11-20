@@ -1,18 +1,17 @@
 import os
-from datetime import datetime
 
 from db.db_requests.get_scripts import get_scripts
 from .__all_func import *
 from .prompts import *
-# from work_with_files import *
-# from request_to import get_cards, get_lots
-# from request_to_ai import make_request_to_ai
-# from prompts import *
 
 
-def get_tender_cards(user_id):
-    files = []
-    for script in get_scripts(user_id):
+def get_tender_cards(user_id, scripts_all=True):
+    files, costs = [], []
+    scripts = get_scripts(user_id)
+    if scripts_all != True:
+        scripts = [script for script in scripts if script[0] in scripts_all]
+    for script in scripts:
+        cost = 0
         product_categories = get_text_from_file(script[1]).split('\n')
         key_words = get_text_from_file(script[2]).split('\n')
         category_key_words = {}
@@ -22,8 +21,8 @@ def get_tender_cards(user_id):
                 if category not in category_key_words:
                     category_key_words[category] = []
                 category_key_words[category].append(word)
-        product_categories = ['тетрадь']
-        category_key_words = {'тетрадь': ['тетрадь']}
+        # product_categories = ['тетрадь']
+        # category_key_words = {'тетрадь': ['тетрадь']}
         cards, urls = get_cards(category_key_words)
         looked_cards = get_text_from_file(script[4]).split('\n')
         not_looked_cards = [card for card in cards if card not in looked_cards]
@@ -48,6 +47,8 @@ def get_tender_cards(user_id):
             answer = make_request_to_ai(promt_count_margin.replace('//Заменить//', '\n'.join([product + ': ' + products[product][0] + '; ' + products[product][1] for product in category_products[category]])),
                                         '\n'.join([f"{lot}: {lots[lot]["name"]} ({lots[lot]["description"]})" for lot in category_true_lots[category]]))
             margin_info += answer[0]
+            prompt_tokens, completion_tokens = answer[1], answer[2]
+            cost += prompt_tokens / 1000 * COST_INPUT_TOKENS * 81 + completion_tokens / 1000 * COST_OUTPUT_TOKENS * 81
 
         margin = {}
         for pair in margin_info.strip().replace('\n\n', '\n').split('\n'):
@@ -93,8 +94,6 @@ def get_tender_cards(user_id):
         path = f'{path}/{script[0]}.txt'
         save_result(path, result)
         files.append(path)
-    return files
+        costs.append(cost)
+    return [files, costs]
 
-
-if __name__ == '__main__':
-    get_tender_cards(929513123)

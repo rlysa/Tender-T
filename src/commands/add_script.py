@@ -3,11 +3,13 @@ from aiogram.filters import Command
 from aiogram.types import Message, FSInputFile
 from aiogram.fsm.context import FSMContext
 import os
+import asyncio
 
 from .forms import Form
 from src.__all_func import *
 from src.prompts import *
 from db.db_requests.new_script import add_new_script
+from db.db_requests.get_scripts import get_scripts
 
 
 router = Router()
@@ -21,6 +23,9 @@ async def cmd_add_script(message: Message, state: FSMContext):
 
 @router.message(Form.add_script_name)
 async def cmd_add_script_name(message: Message, state: FSMContext):
+    if not message.text:
+        await message.answer(f'Введите название сценария текстом')
+        return
     if len(message.text) > 20:
         await message.answer('Слишком длинное название. Введите другое название')
         return
@@ -56,13 +61,18 @@ async def cmd_add_script_f1(message: Message, state: FSMContext):
     try:
         product_categories = get_text_from_file(save_path).lower()
         await message.answer(f'Файл отправлен на обработку')
-        key_words = make_request_to_ai(prompt_get_key_words, product_categories)[0]
+        key_words = make_request_to_ai(prompt_get_key_words, product_categories)
+        prompt_tokens, completion_tokens = key_words[1], key_words[2]
+        key_words = key_words[0]
+        cost = prompt_tokens / 1000 * COST_INPUT_TOKENS * 81 + completion_tokens / 1000 * COST_OUTPUT_TOKENS * 81
         await message.answer(f'Выделены ключевые слова')
     except Exception as e:
         await message.answer(f'Не удалось выделить ключевые слова')
         return
     os.remove(save_path)
     await state.set_state(Form.add_script_f2)
+
+    await state.update_data(cost=cost)
     await state.update_data(product_categories=product_categories.split('\n'))
     await state.update_data(key_words=key_words)
     await message.answer(f'Отправьте файл с товарами в формате xlsx')
@@ -95,13 +105,16 @@ async def cmd_add_script_f2(message: Message, state: FSMContext):
         data = await state.get_data()
         product_categories = data['product_categories']
         file_text = get_text_from_file(save_path)
-        file_text = get_text_by_words(file_text, product_categories[0:2])
+        file_text = get_text_by_words(file_text, product_categories)
         title = file_text['title']
         file_text.pop('title')
         products = []
         await message.answer(f'Файл отправлен на обработку')
+        cost_scr = 0
         for category in file_text:
             answer = make_request_to_ai(prompt_get_key_info_our_products + title, file_text[category])
+            prompt_tokens, completion_tokens = answer[1], answer[2]
+            cost_scr += prompt_tokens / 1000 * COST_INPUT_TOKENS * 81 + completion_tokens / 1000 * COST_OUTPUT_TOKENS * 81
             for product in answer[0].strip().replace('\n\n', '\n').split('\n'):
                 if len(product.strip().split(':', 1)) == 2:
                     article, name_cost = [i.strip() for i in product.strip().split(':', 1)]
@@ -117,12 +130,43 @@ async def cmd_add_script_f2(message: Message, state: FSMContext):
     add_new_script_to_db(data['name'], message.from_user.id, product_categories, data['key_words'], products)
     os.remove(save_path)
     await message.answer('Сценарий создан')
-    await state.set_state(Form.main_st)
+    await message.answer(f'Стоимость создания сценария: {cost_scr + data['cost']}₽')
+    await state.clear()
 
-    documents = get_tender_cards(message.from_user.id)
-    for doc in documents:
+    await asyncio.sleep(60)
+    documents, costs = get_tender_cards(message.from_user.id, data['name'])
+    for index, doc in enumerate(documents):
         document_file = FSInputFile(doc)
         await message.answer_document(document=document_file)
+        await message.answer(f'Стоимость: {costs[index]}₽')
+
+    if len(get_scripts(message.from_user.id)) == 1:
+        start_scheduled_task(message.from_user.id, message.bot)
+
+
+from typing import Dict
+scheduled_tasks: Dict[int, asyncio.Task] = {}
+_running = False
+
+
+async def start_scenario_manager():
+    global _running
+    _running = True
+
+
+def start_scheduled_task(user_id, bot):
+    if user_id in scheduled_tasks:
+        scheduled_tasks[user_id].cancel()
+    task = asyncio.create_task(scheduled_scenario_task(user_id, bot))
+    scheduled_tasks[user_id] = task
+
+
+async def scheduled_scenario_task(user_id, bot):
+    global _running
+    while _running and get_scripts(user_id) != []:
+        await asyncio.sleep(60 * 10)
+        from .execute_algorithm import execute_algorithm
+        await execute_algorithm(user_id, bot)
 
 
 def add_new_script_to_db(name, user_id, product_categories, key_words, products):
