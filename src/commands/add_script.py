@@ -58,6 +58,7 @@ async def cmd_add_script_f1(message: Message, state: FSMContext):
         await message.answer(f'Файл сохранен')
     except Exception as e:
         await message.answer(f'Не удалось сохранить файл')
+        await bot.send_message(ADMIN, f'Ошибка при сохранении файла1:\n{e}')
         return
     try:
         product_categories = get_text_from_file(save_path).lower()
@@ -69,6 +70,7 @@ async def cmd_add_script_f1(message: Message, state: FSMContext):
         await message.answer(f'Выделены ключевые слова')
     except Exception as e:
         await message.answer(f'Не удалось выделить ключевые слова')
+        await bot.send_message(ADMIN, f'Ошибка при выделении ключевых слов:\n{e}')
         return
     os.remove(save_path)
     await state.set_state(Form.add_script_f2)
@@ -102,6 +104,7 @@ async def cmd_add_script_f2(message: Message, state: FSMContext):
         await message.answer(f'Файл сохранен')
     except Exception as e:
         await message.answer(f'Не удалось сохранить файл')
+        await bot.send_message(ADMIN, f'Ошибка при сохранении файла2:\n{e}')
         return
     try:
         data = await state.get_data()
@@ -128,8 +131,12 @@ async def cmd_add_script_f2(message: Message, state: FSMContext):
         await message.answer(f'Файл обработан')
     except Exception as e:
         await message.answer(f'Не удалось обработать файл')
+        await bot.send_message(ADMIN, f'Ошибка при выделении товаров:\n{e}')
         return
-    add_new_script_to_db(data['name'], message.from_user.id, product_categories, data['key_words'], products)
+    try:
+        add_new_script_to_db(data['name'], message.from_user.id, product_categories, data['key_words'], products)
+    except Exception as e:
+        await bot.send_message(ADMIN, f'Ошибка при сохранении сценария в бд:\n{e}')
     os.remove(save_path)
     await message.answer('Сценарий создан')
     await message.answer(f'Стоимость создания сценария: {cost_scr + data['cost']}₽')
