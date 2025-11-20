@@ -7,7 +7,7 @@ from aiogram.fsm.storage.base import StorageKey
 
 from .forms import Form
 from db.db_requests.new_user import add_new_user, is_new
-from config import ADMIN
+from config import ADMIN, ADMIN_USERNAME
 
 
 router = Router()
@@ -52,3 +52,8 @@ async def handle_admin_decision(callback: CallbackQuery):
 
 def add_new_user_in_db(user_id):
     add_new_user(user_id)
+
+
+@router.message(Command('help'))
+async def cmd_start(message: Message, state: FSMContext):
+    await message.answer(f'Это бот для отслеживания тендеров по заданным сценариям\nДля добавления нового сценария отправьте /add_script\nКаждые три часа осуществляется поиск по заданному сценарию\n\nПо любым вопросом обращаться к @{ADMIN_USERNAME}')

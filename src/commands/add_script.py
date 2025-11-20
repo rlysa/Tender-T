@@ -32,7 +32,8 @@ async def cmd_add_script_name(message: Message, state: FSMContext):
     await state.set_state(Form.add_script_f1)
     await state.update_data(name=message.text)
     await message.answer(f'Для создания нового сценария необходимо 2 файла')
-    await message.answer(f'Отправьте файл с категориями товаров в формате txt')
+    await message.answer(f'Отправьте файл с категориями товаров в формате txt, оформленный по шаблону')
+    await message.answer_document(document=FSInputFile('../files/test/категории.txt'))
 
 
 @router.message(Form.add_script_f1)
@@ -75,7 +76,8 @@ async def cmd_add_script_f1(message: Message, state: FSMContext):
     await state.update_data(cost=cost)
     await state.update_data(product_categories=product_categories.split('\n'))
     await state.update_data(key_words=key_words)
-    await message.answer(f'Отправьте файл с товарами в формате xlsx')
+    await message.answer(f'Отправьте файл с товарами в формате xlsx, оформленный по шаблону')
+    await message.answer_document(document=FSInputFile('../files/test/товары.xlsx'))
 
 
 @router.message(Form.add_script_f2)
