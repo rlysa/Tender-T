@@ -127,7 +127,6 @@ async def cmd_add_script_f2(message: Message, state: FSMContext):
                         name, cost = [i.strip() for i in name_cost.split(';', 1)]
                         products.append(f'{category};{article};{name};{cost}')
         products = '\n'.join(products)
-        print(products)
         await message.answer(f'Файл обработан')
     except Exception as e:
         await message.answer(f'Не удалось обработать файл')

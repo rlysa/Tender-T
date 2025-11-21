@@ -44,7 +44,7 @@ def make_request_to_ai(prompt, text, model=MODEL):
                 'messages': [{'role': 'user', 'content': part_of_text}, ]
             }
             response = requests.post(AI_URL, headers=headers, json=data)
-            while response.status_code != 200:
+            while response.status_code != 200 or 'connection aborted' not in response.text.lower():
                 time.sleep(60)
                 print(f'{datetime.now()}: Переподключение')
                 response = requests.post(AI_URL, headers=headers, json=data)
@@ -55,5 +55,5 @@ def make_request_to_ai(prompt, text, model=MODEL):
             print(f'{datetime.now()}: Обработка запроса: {len(answer)}/{len(full_text)}')
             time.sleep(60)
     except Exception as e:
-        print(f'Ошибка в отправке запроса модели: {response.status_code}\n{e}')
+        print(f'Ошибка в отправке запроса модели {e}')
     return ['\n'.join(answer), prompt_tokens, completion_tokens]

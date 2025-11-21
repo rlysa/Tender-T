@@ -50,7 +50,7 @@ def get_text_by_words(file_text, categories):
         if 'цена' in row or 'название' in row or 'артикул' in row or 'стоимость' in row:
             category_products['title'] += f'{row}\n'
         for category in categories:
-            if category in row:
+            if category[::-2] in row:
                 if category not in category_products:
                     category_products[category] = ''
                 category_products[category] += f'{row}\n'

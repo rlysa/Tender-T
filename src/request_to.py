@@ -15,7 +15,7 @@ def make_request(url):
         response = requests.get(url, headers=headers)
         soup = None
         while not soup:
-            while response.status_code != 200 and 'connection aborted' not in response.text.lower():
+            while response.status_code != 200 or 'connection aborted' not in response.text.lower():
                 time.sleep(2)
                 print(f'{datetime.now()}: Переподключение')
                 response = requests.get(url, headers=headers)
@@ -30,8 +30,8 @@ def get_cards(words):
     start_date, end_date = get_date()
     url = get_url(start_date, end_date)
 
+    print(f'{datetime.now()}: Поиск карточек:{len(words)}')
     for index, word in enumerate(words):
-        print(f'{datetime.now()}: Поиск карточек: {index + 1}/{len(words)}')
         url_word = url.replace('searchString=&', f'searchString={word.strip()}&')
         urls.append(url_word)
         soup_word = make_request(url_word)
@@ -39,12 +39,11 @@ def get_cards(words):
         total = int(''.join([i for i in total if i.isdigit()]))
         pages = total // 50 + 1 if total > 50 else 1
         blocks = soup_word.find_all('div', class_='row no-gutters registry-entry__form mr-0')
-        # if pages > 1:
-        #     for i in range(2, pages + 1):
-        #         soup_pages = make_request(f'{url_word}&pageNumber={i}')
-        #         blocks += soup_pages.find_all('div', class_='row no-gutters registry-entry__form mr-0')
+        if pages > 1:
+            for i in range(2, pages + 1):
+                soup_pages = make_request(f'{url_word}&pageNumber={i}')
+                blocks += soup_pages.find_all('div', class_='row no-gutters registry-entry__form mr-0')
         for i, block in enumerate(blocks):
-            print(i, len(blocks))
             number = block.find('div', class_='registry-entry__header-mid__number').get_text().strip().replace('№ ', '')
             name = block.find('div', class_='registry-entry__body-value').get_text().strip()
             cost = block.find('div', class_='price-block__value')
@@ -68,8 +67,8 @@ def get_cards(words):
 
 def get_lots(cards):
     lots, card_lots = {}, {}
+    print(f'{datetime.now()}: Сбор лотов: {len(cards)}')
     for index, card in enumerate(cards):
-        print(f'{datetime.now()}: Сбор лотов: {index + 1}/{len(cards)}')
         number, link = card
         soup_info = make_request(link)
         info = soup_info.find('div', class_='container', id='positionKTRU')
@@ -157,7 +156,7 @@ def get_url(start_date, end_date):
     page_number = ['&pageNumber=1', ''][0]  # ?????????????????????????????
     search_filter = ['&search-filter=Дате+размещения', '']  # ????????????? как будто бесполезно из-за sortBy
     sort_direction = '&sortDirection=' + ['false', 'true'][0]  # убывание/возрастание
-    records_per_page = '&recordsPerPage=_' + ['10', '20', '50'][0]
+    records_per_page = '&recordsPerPage=_' + ['10', '20', '50'][2]
     show_lots_info_hidden = '&showLotsInfoHidden=' + ['false', 'true'][0]
     sort_by = '&sortBy=' + ['UPDATE_DATE', 'PUBLISH_DATE', 'PRICE', 'RELEVANCE'][0]
     zakon = ''.join(['&fz44=on', '&fz223=on', '&ppRf615=on', ''])
