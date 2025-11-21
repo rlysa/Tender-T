@@ -1,0 +1,13 @@
+ZAKUPKI_TOKEN = ''
+
+AI_URL = ''
+AI_API_KEY = ''
+MODEL = 'gpt-4o-mini'
+MAX_TOKENS = 127000
+COST_INPUT_TOKENS = 0.00015 # за 1к
+COST_OUTPUT_TOKENS = 0.0006 # за 1к
+
+BOT_TOKEN = ''
+DB_NAME = '../db/db/tender_t.db'
+ADMIN = 0
+ADMIN_USERNAME = ''
