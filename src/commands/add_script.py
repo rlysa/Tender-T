@@ -1,3 +1,4 @@
+from pathlib import Path
 from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message, FSInputFile
@@ -33,7 +34,9 @@ async def cmd_add_script_name(message: Message, state: FSMContext):
     await state.update_data(name=message.text)
     await message.answer(f'Для создания нового сценария необходимо 2 файла')
     await message.answer(f'Отправьте файл с категориями товаров в формате txt, оформленный по шаблону')
-    await message.answer_document(document=FSInputFile('../files/test/категории.txt'))
+    project_root = Path(__file__).parent.parent.parent
+    path = project_root / 'files' / 'test' / 'категории.txt'
+    await message.answer_document(document=FSInputFile(path))
 
 
 @router.message(Form.add_script_f1)
@@ -53,7 +56,8 @@ async def cmd_add_script_f1(message: Message, state: FSMContext):
     try:
         file = await bot.get_file(file_id)
         file_path = file.file_path
-        save_path = os.path.join('../downloads', f'{message.from_user.id}_{file_name}')
+        project_root = Path(__file__).parent.parent.parent
+        save_path = project_root / 'downloads' / f'{message.from_user.id}_{file_name}'
         await bot.download_file(file_path, save_path)
         await message.answer(f'Файл сохранен')
     except Exception as e:
@@ -79,7 +83,9 @@ async def cmd_add_script_f1(message: Message, state: FSMContext):
     await state.update_data(product_categories=product_categories.split('\n'))
     await state.update_data(key_words=key_words)
     await message.answer(f'Отправьте файл с товарами в формате xlsx, оформленный по шаблону')
-    await message.answer_document(document=FSInputFile('../files/test/товары.xlsx'))
+    project_root = Path(__file__).parent.parent.parent
+    path = project_root / 'files' / 'test' / 'товары.xlsx'
+    await message.answer_document(document=FSInputFile(path))
 
 
 @router.message(Form.add_script_f2)
@@ -99,7 +105,8 @@ async def cmd_add_script_f2(message: Message, state: FSMContext):
     try:
         file = await bot.get_file(file_id)
         file_path = file.file_path
-        save_path = os.path.join('../downloads', f'{message.from_user.id}_{file_name}')
+        project_root = Path(__file__).parent.parent.parent
+        save_path = project_root / 'downloads' / f'{message.from_user.id}_{file_name}'
         await bot.download_file(file_path, save_path)
         await message.answer(f'Файл сохранен')
     except Exception as e:

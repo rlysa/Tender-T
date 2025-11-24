@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from db.db_requests.get_scripts import get_scripts
 from .__all_func import *
@@ -90,7 +91,8 @@ def get_tender_cards(user_id, scripts_all=True):
                 result += f'\nНе покрытые товары: {"; ".join(not_coverage)}\n\n' if not_coverage else '\n\n'
             result = result.replace('.00 ', '').replace('.0 ', ' ').replace(';)', ')')
 
-            path = f'../results/{datetime.now().strftime("%d.%m.%Y_%H.%M.%S")}'
+            project_root = Path(__file__).parent.parent.parent
+            path = project_root / 'results' / f'{datetime.now().strftime("%d.%m.%Y_%H.%M.%S")}'
             os.mkdir(path)
             path = f'{path}/{script[0]}.txt'
             save_result(path, result)
