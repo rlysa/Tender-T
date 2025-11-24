@@ -179,7 +179,7 @@ def start_scheduled_task(user_id, bot):
 async def scheduled_scenario_task(user_id, bot):
     global _running
     while _running and get_scripts(user_id) != []:
-        await asyncio.sleep(60 * 10)
+        await asyncio.sleep(60 * 60 * 3)
         from .execute_algorithm import execute_algorithm
         await execute_algorithm(user_id, bot)
 
