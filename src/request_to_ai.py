@@ -44,7 +44,7 @@ def make_request_to_ai(prompt, text, model=MODEL):
                 'messages': [{'role': 'user', 'content': part_of_text}, ]
             }
             response = requests.post(AI_URL, headers=headers, json=data)
-            while response.status_code != 200 or 'connection aborted' not in response.text.lower():
+            while response.status_code != 200 or 'connection aborted' in response.text.lower():
                 time.sleep(60)
                 print(f'{datetime.now()}: Переподключение')
                 response = requests.post(AI_URL, headers=headers, json=data)

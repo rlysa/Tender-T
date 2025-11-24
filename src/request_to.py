@@ -15,7 +15,7 @@ def make_request(url):
         response = requests.get(url, headers=headers)
         soup = None
         while not soup:
-            while response.status_code != 200 or 'connection aborted' not in response.text.lower():
+            while response.status_code != 200 or 'connection aborted' in response.text.lower():
                 time.sleep(2)
                 print(f'{datetime.now()}: Переподключение')
                 response = requests.get(url, headers=headers)

@@ -33,8 +33,8 @@ async def cmd_add_script_name(message: Message, state: FSMContext):
     await state.update_data(name=message.text)
     await message.answer(f'Для создания нового сценария необходимо 2 файла')
     await message.answer(f'Отправьте файл с категориями товаров в формате txt, оформленный по шаблону')
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    path = os.path.join(project_root, f'files/test/категории.txt')
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath('Tender-T')))
+    path = os.path.join(project_root, 'files', 'test', 'категории.txt')
     await message.answer_document(document=FSInputFile(path))
 
 
@@ -55,8 +55,8 @@ async def cmd_add_script_f1(message: Message, state: FSMContext):
     try:
         file = await bot.get_file(file_id)
         file_path = file.file_path
-        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        save_path = os.path.join(project_root, f'downloads/{message.from_user.id}_{file_name}')
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath('Tender-T')))
+        save_path = os.path.join(project_root, 'downloads', f'{message.from_user.id}_{file_name}')
         await bot.download_file(file_path, save_path)
         await message.answer(f'Файл сохранен')
     except Exception as e:
@@ -82,8 +82,8 @@ async def cmd_add_script_f1(message: Message, state: FSMContext):
     await state.update_data(product_categories=product_categories.split('\n'))
     await state.update_data(key_words=key_words)
     await message.answer(f'Отправьте файл с товарами в формате xlsx, оформленный по шаблону')
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    path = os.path.join(project_root, f'files/test/товары.xlsx')
+    project_root = os.path.dirname(os.path.dirname(os.path.abspath('Tender-T')))
+    path = os.path.join(project_root, 'files', 'test', 'товары.xlsx')
     await message.answer_document(document=FSInputFile(path))
 
 
@@ -104,8 +104,8 @@ async def cmd_add_script_f2(message: Message, state: FSMContext):
     try:
         file = await bot.get_file(file_id)
         file_path = file.file_path
-        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        save_path = os.path.join(project_root, f'downloads/{message.from_user.id}_{file_name}')
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath('Tender-T')))
+        save_path = os.path.join(project_root, 'downloads', f'{message.from_user.id}_{file_name}')
         await bot.download_file(file_path, save_path)
         await message.answer(f'Файл сохранен')
     except Exception as e:
