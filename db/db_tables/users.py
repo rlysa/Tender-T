@@ -1,6 +1,5 @@
-from email.policy import default
-
 import sqlalchemy
+from sqlalchemy.orm import relationship
 from .db_session import SqlAlchemyBase
 
 
@@ -12,3 +11,5 @@ class Users(SqlAlchemyBase):
 
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True, unique=True)
     role = sqlalchemy.Column(sqlalchemy.Integer, default=USER)
+
+    scripts = relationship("Scripts", back_populates="user")

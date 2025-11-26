@@ -2,20 +2,34 @@ from aiogram import Bot
 from aiogram.types import FSInputFile
 
 from src.get_tender_cards import get_tender_cards
+from db.db_requests.get_scripts import get_scripts
 from config import ADMIN
 
 
 async def execute_algorithm(user_id, bot):
-    await bot.send_message(user_id, 'Поиск новых карточек')
-    documents, costs = get_tender_cards(user_id)
-    if 'Error' in documents:
-        await bot.send_message(ADMIN, f'Ошибка при выполнении сценариев:\n{documents}')
-        await bot.send_message(user_id, 'При выполнении сценария возникла ошибка')
-        return
-    for doc, index in enumerate(documents):
-        document_file = FSInputFile(doc)
-        await bot.send_document(user_id, document=document_file)
-        await bot.send_message(user_id, f'Стоимость: {costs[index]}₽')
-    else:
-        await bot.send_message(user_id, 'Нет новых карточек')
-
+    try:
+        await bot.send_message(user_id, 'Поиск новых карточек')
+        try:
+            documents, costs = get_tender_cards(get_scripts(user_id))
+        except Exception as e:
+            await bot.send_message(ADMIN, f'Ошибка при поиске тендеров (user {user_id}): {str(e)}')
+            await bot.send_message(user_id, 'При выполнении сценария возникла ошибка')
+            return
+        documents, costs = get_tender_cards(user_id)
+        if not documents or (isinstance(documents, list) and any('error' in str(doc).lower() for doc in documents)):
+            await bot.send_message(ADMIN, f'Ошибка при выполнении сценариев:\n{documents}')
+            await bot.send_message(user_id, 'При выполнении сценария возникла ошибка')
+            return
+        for doc, index in enumerate(documents):
+            try:
+                document_file = FSInputFile(doc)
+                await bot.send_document(user_id, document=document_file)
+                await bot.send_message(user_id, f'Стоимость: {costs[index]}₽')
+            except Exception as e:
+                await bot.send_message(ADMIN, f"Ошибка отправки документа файл {doc}: {str(e)}")
+                await bot.send_message(user_id, f'Ошибка при отправке файла')
+        else:
+            await bot.send_message(user_id, 'Нет новых карточек')
+    except Exception as e:
+        await bot.send_message(ADMIN, f"Критическая ошибка в execute_algorithm: {str(e)}")
+        await bot.send_message(user_id, 'Критическая ошибка при выполнении сценария')

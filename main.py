@@ -4,7 +4,7 @@ from aiogram import Bot, Dispatcher, types, Router
 from aiogram.filters import Command
 from aiogram.types import Message, CallbackQuery
 
-from config import BOT_TOKEN, DB_NAME
+from config import BOT_TOKEN, DB_NAME, ADMIN
 from src.__routers import routers
 from db.db_tables.db_session import global_init
 from src.commands.add_script import start_scenario_manager
@@ -25,15 +25,20 @@ async def on_shutdown():
 
 
 async def main():
-    await start_scenario_manager()
     try:
+        await start_scenario_manager()
         await dp.start_polling(bot)
+    except Exception as e:
+        print(f'Ошибка запуска: {e}')
     finally:
         await on_shutdown()
 
 
-def run_db():
-    global_init(DB_NAME)
+async def run_db():
+    try:
+        await global_init(DB_NAME)
+    except Exception as e:
+        await bot.send_message(ADMIN, f'Ошибка БД: {e}')
 
 
 if __name__ == '__main__':

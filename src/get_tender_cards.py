@@ -1,33 +1,31 @@
-import os
 from pathlib import Path
 
-from db.db_requests.get_scripts import get_scripts
 from .__all_func import *
 from .prompts import *
 
 
-def get_tender_cards(user_id, scripts_all=True):
+def get_tender_cards(scripts):
     files, costs = [], []
     try:
-        scripts = get_scripts(user_id)
-        if scripts_all != True:
-            scripts = [script for script in scripts if script[0] in scripts_all]
         for script in scripts:
             cost = 0
             product_categories = get_text_from_file(script[1]).split('\n')
             key_words = get_text_from_file(script[2]).split('\n')
             category_key_words = {}
             for pair in key_words:
-                if len(pair.split(':')) == 2:
-                    category, word = [i.strip() for i in pair.split(':', 1)]
-                    if category not in category_key_words:
-                        category_key_words[category] = []
-                    category_key_words[category].append(word)
+                if pair.strip():
+                    if len(pair.split(':')) == 2:
+                        category, word = [i.strip() for i in pair.split(':', 1)]
+                        if category not in category_key_words:
+                            category_key_words[category] = []
+                        category_key_words[category].append(word)
             # product_categories = ['тетрадь']
             # category_key_words = {'тетрадь': ['тетрадь']}
             cards, urls = get_cards(category_key_words)
             looked_cards = get_text_from_file(script[4]).split('\n')
             not_looked_cards = [card for card in cards if card not in looked_cards]
+            if not not_looked_cards:
+                continue
             card_lots, lots = get_lots([[card, cards[card]['link']] for card in not_looked_cards])
             category_true_lots = {}
             for category in product_categories:
@@ -39,25 +37,36 @@ def get_tender_cards(user_id, scripts_all=True):
             products_file = get_text_from_file(script[3]).split('\n')
             products, category_products = {}, {}
             for string in products_file:
-                category, article, name, cost = [i.strip() for i in string.split(';')]
-                if category not in category_products:
-                    category_products[category] = []
-                category_products[category].append(article)
-                products[article] = [name, cost]
+                if string.strip():
+                    category, article, name, cost = [i.strip() for i in string.split(';')]
+                    if category not in category_products:
+                        category_products[category] = []
+                    category_products[category].append(article)
+                    products[article] = [name, cost]
             margin_info = ''
             for category in category_products:
-                answer = make_request_to_ai(promt_count_margin.replace('//Заменить//', '\n'.join([product + ': ' + products[product][0] + '; ' + products[product][1] for product in category_products[category]])),
-                                            '\n'.join([f"{lot}: {lots[lot]["name"]} ({lots[lot]["description"]})" for lot in category_true_lots[category]]))
-                margin_info += answer[0]
-                prompt_tokens, completion_tokens = answer[1], answer[2]
-                cost += prompt_tokens / 1000 * COST_INPUT_TOKENS * 81 + completion_tokens / 1000 * COST_OUTPUT_TOKENS * 81
+                if category not in category_true_lots or not category_true_lots[category]:
+                    continue  # Нет лотов для этой категории
+
+                try:
+                    products_text = '\n'.join([f'{product}: {products[product][0]}; {products[product][1]}' for product in category_products[category]])
+
+                    lots_text = '\n'.join([f'{lot}: {lots[lot]['name']} ({lots[lot].get('description', '')})' for lot in category_true_lots[category]])
+                    answer = make_request_to_ai(promt_count_margin.replace('//Заменить//', products_text), lots_text)
+                    if answer:
+                        margin_info += answer[0]
+                        prompt_tokens, completion_tokens = answer[1], answer[2]
+                        cost += prompt_tokens / 1000 * COST_INPUT_TOKENS * 81 + completion_tokens / 1000 * COST_OUTPUT_TOKENS * 81
+                except Exception as e:
+                    continue
 
             margin = {}
-            for pair in margin_info.strip().replace('\n\n', '\n').split('\n'):
-                if len(pair.strip().split(':', 1)) == 2:
-                    lot, pr = [i.strip() for i in pair.split(':', 1)]
-                    if pr in products:
-                        margin[lot] = pr
+            if margin_info:
+                for pair in margin_info.strip().replace('\n\n', '\n').split('\n'):
+                    if len(pair.strip().split(':', 1)) == 2:
+                        lot, pr = [i.strip() for i in pair.split(':', 1)]
+                        if pr in products:
+                            margin[lot] = pr
             for pair in margin_info.strip().replace('\n\n', '\n').split('\n'):
                 if len(pair.strip().split(':', 1)) == 2:
                     lot, pr = [i.strip() for i in pair.split(':', 1)]
@@ -100,5 +109,5 @@ def get_tender_cards(user_id, scripts_all=True):
             costs.append(cost)
         return [files, costs]
     except Exception as e:
-        return [f'Error: {e}', sum(costs)]
+        return [[], []]
 
