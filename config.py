@@ -1,13 +1,15 @@
-ZAKUPKI_TOKEN = ''
+import os
 
-AI_URL = ''
-AI_API_KEY = ''
-MODEL = 'gpt-4o-mini'
+ZAKUPKI_TOKEN = os.getenv('ZAKUPKI_TOKEN', '')
+
+AI_URL = os.getenv('AI_URL', '')
+AI_API_KEY = os.getenv('AI_API_KEY', '')
+MODEL = os.getenv('MODEL', '')
 MAX_TOKENS = 127000
-COST_INPUT_TOKENS = 0.00015 # за 1к
-COST_OUTPUT_TOKENS = 0.0006 # за 1к
+COST_INPUT_TOKENS = 0.00015
+COST_OUTPUT_TOKENS = 0.0006
 
-BOT_TOKEN = ''
-DB_NAME = '../db/db/tender_t.db'
-ADMIN = 0
-ADMIN_USERNAME = ''
+DB_NAME = os.path.join(os.path.dirname(__file__), 'db/db/tender_t.db')
+BOT_TOKEN = os.getenv('BOT_TOKEN', '')
+ADMIN = int(os.getenv('ADMIN', ''))
+ADMIN_USERNAME = os.getenv('ADMIN_USERNAME', '')
