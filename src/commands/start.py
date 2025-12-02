@@ -25,17 +25,17 @@ async def cmd_start(message: Message, state: FSMContext):
                            reply_markup=InlineKeyboardMarkup(
                                inline_keyboard=[
                                    [
-                                       InlineKeyboardButton(text='Одобрить', callback_data=f'approve_{message.from_user.id}'),
-                                       InlineKeyboardButton(text='Отклонить', callback_data=f'reject_{message.from_user.id}')
+                                       InlineKeyboardButton(text='Одобрить', callback_data=f'approve_start_{message.from_user.id}'),
+                                       InlineKeyboardButton(text='Отклонить', callback_data=f'reject_start_{message.from_user.id}')
                                    ]
                                ]
                            )
                            )
 
 
-@router.callback_query(lambda c: c.data.startswith(('approve_', 'reject_')))
+@router.callback_query(lambda c: c.data.startswith(('approve_start', 'reject_start')))
 async def handle_admin_decision(callback: CallbackQuery):
-    action, user_id = callback.data.split('_')
+    action, what, user_id = callback.data.split('_')
     user_id = int(user_id)
     username = callback.message.text.split('@')[1].split(' ')[0]
     bot = callback.message.bot
@@ -43,7 +43,7 @@ async def handle_admin_decision(callback: CallbackQuery):
         add_new_user_in_db(user_id)
         await callback.message.edit_text(f'Заявка пользователя @{username} одобрена', reply_markup=None)
         await bot.send_message(user_id, text='Заявка одобрена')
-        await bot.send_message(user_id, text=f'Для добавления нового сценария отправьте /add_script')
+        await bot.send_message(user_id, text=f'Для получения доступа к сценариям отправьте /get_access')
     else:
         await bot.send_message(user_id, text='Заявка отклонена администратором')
         await callback.message.edit_text(f'Заявка пользователя @{username} отклонена', reply_markup=None)
@@ -56,4 +56,4 @@ def add_new_user_in_db(user_id):
 
 @router.message(Command('help'))
 async def cmd_start(message: Message, state: FSMContext):
-    await message.answer(f'Это бот для отслеживания тендеров по заданным сценариям\nДля добавления нового сценария отправьте /add_script\nКаждые три часа осуществляется поиск по заданному сценарию\n\nПо любым вопросом обращаться к @{ADMIN_USERNAME}')
+    await message.answer(f'Это бот для отслеживания тендеров по заданным сценариям\n\nКаждые три часа осуществляется поиск по заданному сценарию\nДля получения доступа к сценариям отправьте /get_access\n\nПо любым вопросом обращаться к @{ADMIN_USERNAME}')

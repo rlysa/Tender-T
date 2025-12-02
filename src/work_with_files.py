@@ -30,18 +30,20 @@ def get_text_from_file(file_name):
             for row in sheet.iter_rows():
                 row_text = ''
                 for cell in row:
-                    if cell is not None and cell != '':
-                        if isinstance(cell, (int, float)):
+                    if cell.value is not None and cell != '':
+                        if isinstance(cell.value, (int, float)):
+                            fmt = cell.number_format
                             try:
-                                row_text += f'{cell:.2f} ' if isinstance(cell, float) else f'{cell} '
-                            except Exception:
-                                row_text += f'{cell} '
+                                row_text += str(cell.value) if fmt == 'General' else format(cell.value, '.2f') + ' '
+                            except:
+                                row_text += str(cell.value) + ' '
                         else:
-                            row_text += str(cell).strip().lower() + ' '
+                            row_text += str(cell.value).lower().replace('\n', '') + ' '
                 if row_text.strip():
                     file_text += row_text.strip() + '\n'
         while '\n\n' in file_text:
             file_text = file_text.replace('\n\n', '\n')
+        return file_text
     except Exception as e:
         raise Exception(f'Ошибка чтения файла {file_name}: {str(e)}')
 

@@ -1,8 +1,4 @@
 config.py
-.env
-*.pem
-__pycache__/
 db/db/tender_t.db
-*.log
-venv/
-botenv/
+*.pem
+.env

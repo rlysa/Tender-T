@@ -2,7 +2,6 @@ from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message, FSInputFile
 from aiogram.fsm.context import FSMContext
-import os
 import asyncio
 
 from .forms import Form
@@ -18,6 +17,8 @@ router = Router()
 @router.message(Command('add_script'))
 async def cmd_add_script(message: Message, state: FSMContext):
     try:
+        if not message.from_user.id == ADMIN:
+            await message.answer('У вас нет доступа\nДля получения доступа к сценариям отправьте /get_access')
         await state.set_state(Form.add_script_name)
         await message.answer(f'Введите название сценария')
     except Exception as e:
@@ -82,7 +83,7 @@ async def cmd_add_script_f1(message: Message, state: FSMContext):
             return
         await message.answer(f'Файл отправлен на обработку')
         try:
-            key_words = make_request_to_ai(prompt_get_key_words, bot, product_categories)
+            key_words = make_request_to_ai(prompt_get_key_words, product_categories)
         except Exception as e:
             await message.answer('Не удалось получить ответ от AI')
             await message.bot.send_message(ADMIN, f'Ошибка AI {e}')
@@ -149,12 +150,12 @@ async def cmd_add_script_f2(message: Message, state: FSMContext):
         try:
             file_text = get_text_from_file(save_path).lower()
         except Exception as e:
-            await message.answer(f'Файл пустой')
+            await message.answer(f'Ошибка чтения файла')
             await message.bot.send_message(ADMIN, f'Ошибка чтения файла {e}')
             return
 
         file_text = get_text_by_words(file_text, product_categories)
-        if not file_text or 'title' not in file_text:
+        if file_text == {} or not file_text or 'title' not in file_text:
             await message.answer('Не удалось извлечь данные из файла')
             return
 
@@ -167,6 +168,7 @@ async def cmd_add_script_f2(message: Message, state: FSMContext):
         for category in file_text:
             try:
                 answer = make_request_to_ai(prompt_get_key_info_our_products + title, file_text[category])
+                print(answer)
             except Exception as e:
                 await message.answer(f'Ошибка обработки категории {category}')
                 await bot.send_message(ADMIN, f'Ошибка AI для категории {category}: {str(e)}')
@@ -185,6 +187,9 @@ async def cmd_add_script_f2(message: Message, state: FSMContext):
                     if len(name_cost.split(';', 1)) == 2:
                         name, cost = [i.strip() for i in name_cost.split(';', 1)]
                         products.append(f'{category};{article};{name};{cost}')
+        if products == []:
+            await message.answer(f'Не удалось обработать файл. Возможно он пустой')
+            return
         products = '\n'.join(products)
         await message.answer(f'Файл обработан')
     except Exception as e:
@@ -214,34 +219,6 @@ async def cmd_add_script_f2(message: Message, state: FSMContext):
             await message.answer(f'Стоимость: {costs[index]}₽')
     except Exception as e:
         await message.answer('Ошибка при поиске тендеров')
-
-    if len(get_scripts(message.from_user.id)) == 1:
-        start_scheduled_task(message.from_user.id, message.bot)
-
-
-from typing import Dict
-scheduled_tasks: Dict[int, asyncio.Task] = {}
-_running = False
-
-
-async def start_scenario_manager():
-    global _running
-    _running = True
-
-
-def start_scheduled_task(user_id, bot):
-    if user_id in scheduled_tasks:
-        scheduled_tasks[user_id].cancel()
-    task = asyncio.create_task(scheduled_scenario_task(user_id, bot))
-    scheduled_tasks[user_id] = task
-
-
-async def scheduled_scenario_task(user_id, bot):
-    global _running
-    while _running and get_scripts(user_id) != []:
-        await asyncio.sleep(60 * 60 * 3)
-        from .execute_algorithm import execute_algorithm
-        await execute_algorithm(user_id, bot)
 
 
 def add_new_script_to_db(name, user_id, product_categories, key_words, products):

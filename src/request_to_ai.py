@@ -27,27 +27,11 @@ def make_request_to_ai(prompt, text, model=MODEL):
         tokens_prompt = len(count_tokens(prompt))
 
         if tokens_full_text + tokens_prompt > MAX_TOKENS:
-            available_tokens = MAX_TOKENS - tokens_prompt - 50
-            words = text.split()
-            chunks = []
-            current_chunk = []
-            current_tokens = 0
-
-            for word in words:
-                word_tokens = len(count_tokens(word))
-                if current_tokens + word_tokens <= available_tokens:
-                    current_chunk.append(word)
-                    current_tokens += word_tokens
-                else:
-                    if current_chunk:
-                        chunks.append(' '.join(current_chunk))
-                    current_chunk = [word]
-                    current_tokens = word_tokens
-
-            if current_chunk:
-                chunks.append(' '.join(current_chunk))
+            max_tokens_text = (MAX_TOKENS - tokens_prompt)
+            count = tokens_full_text // max_tokens_text + 1
+            full_text = [prompt + text[i * max_tokens_text:i * max_tokens_text + MAX_TOKENS] for i in range(0, count)]
         else:
-            chunks = [text]
+            full_text = [prompt + text]
 
         answer_parts = []
         prompt_tokens, completion_tokens = 0, 0
@@ -57,15 +41,14 @@ def make_request_to_ai(prompt, text, model=MODEL):
             'Content-Type': 'application/json'
         }
 
-        for i, chunk in enumerate(chunks):
+        for i, part_of_text in enumerate(full_text):
             max_retries = 3
             for attempt in range(max_retries):
                 try:
                     data = {
                         'model': model,
-                        'messages': [{'role': 'user', 'content': prompt + chunk}]
+                        'messages': [{'role': 'user', 'content': part_of_text}, ]
                     }
-
                     response = requests.post(AI_URL, headers=headers, json=data, timeout=60)
                     if response.status_code == 200:
                         result = response.json()
@@ -85,7 +68,7 @@ def make_request_to_ai(prompt, text, model=MODEL):
                     if attempt == max_retries - 1:
                         raise Exception(f'Ошибка сети AI: {str(e)}')
                     time.sleep(5)
-            if i < len(chunks) - 1:
+            if i < len(full_text) - 1:
                 time.sleep(2)
         return ['\n'.join(answer_parts), prompt_tokens, completion_tokens]
 
