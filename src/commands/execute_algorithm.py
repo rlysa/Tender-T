@@ -8,9 +8,6 @@ from config import ADMIN
 
 
 async def execute_algorithm(user_id, bot):
-    for user in get_users_with_access():
-        await bot.send_message(user, f'Стоимость')
-    return
     try:
         await bot.send_message(user_id, 'Поиск новых карточек')
         try:
