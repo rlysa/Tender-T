@@ -26,7 +26,6 @@ async def timer_scenario_task():
     _timer_running = True
 
     try:
-        print(1)
         while _timer_running:
             try:
                 try:
