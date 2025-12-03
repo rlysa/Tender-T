@@ -9,7 +9,8 @@ from config import ADMIN
 
 async def execute_algorithm(user_id, bot):
     try:
-        await bot.send_message(user_id, 'Поиск новых карточек')
+        for user in get_users_with_access():
+            await bot.send_message(user, 'Поиск новых карточек')
         try:
             documents, costs = get_tender_cards(get_scripts(user_id))
         except Exception as e:
@@ -21,7 +22,7 @@ async def execute_algorithm(user_id, bot):
             await bot.send_message(user_id, 'При выполнении сценария возникла ошибка')
             return
         for user in get_users_with_access():
-            for doc, index in enumerate(documents):
+            for index, doc in enumerate(documents):
                 try:
                     document_file = FSInputFile(doc)
                     await bot.send_document(user, document=document_file)
@@ -30,6 +31,6 @@ async def execute_algorithm(user_id, bot):
                     await bot.send_message(ADMIN, f"Ошибка отправки документа файл {doc}: {str(e)}")
                     await bot.send_message(user, f'Ошибка при отправке файла')
             else:
-                await bot.send_message(user_id, 'Нет новых карточек')
+                await bot.send_message(user, 'Нет новых карточек')
     except Exception as e:
         await bot.send_message(ADMIN, f"Критическая ошибка в execute_algorithm: {str(e)}")

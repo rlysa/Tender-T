@@ -40,7 +40,4 @@ def create_session():
     if not __factory:
         raise Exception('База данных не инициализирована. Сначала вызовите global_init()')
 
-    try:
-        return __factory
-    except sqlalchemy.exc.SQLAlchemyError as e:
-        raise Exception(f'Ошибка создания сессии БД: {str(e)}')
+    return __factory

@@ -11,5 +11,5 @@ class Scripts(SqlAlchemyBase):
     name = sqlalchemy.Column(sqlalchemy.VARCHAR(255))
     user_id = sqlalchemy.Column(sqlalchemy.Integer, ForeignKey('users.id'))
 
-    ser = relationship("Users", back_populates="scripts")
+    user = relationship("Users", back_populates="scripts")
     files = relationship("Files", back_populates="script")

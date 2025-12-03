@@ -10,6 +10,6 @@ class Files(SqlAlchemyBase):
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True, unique=True, autoincrement=True)
     path = sqlalchemy.Column(sqlalchemy.VARCHAR(255))
     name = sqlalchemy.Column(sqlalchemy.VARCHAR(255))
-    script_id = sqlalchemy.Column(sqlalchemy.Integer)
+    script_id = sqlalchemy.Column(sqlalchemy.Integer, ForeignKey('scripts.id'))
 
     script = relationship("Scripts", back_populates="files")

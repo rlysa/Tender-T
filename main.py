@@ -34,7 +34,7 @@ async def timer_scenario_task():
                 except Exception as e:
                     if ADMIN:
                         await bot.send_message(ADMIN, f'Ошибка в таймерной задаче: {str(e)}')
-                await asyncio.sleep(10)
+                await asyncio.sleep(TIMER_INTERVAL)
             except Exception as e:
                 if ADMIN:
                     await bot.send_message(ADMIN, f'Критическая ошибка в таймерной задаче: {str(e)}')
