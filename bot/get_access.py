@@ -1,11 +1,10 @@
 from aiogram import Router, Bot
 from aiogram.filters import Command
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
-
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.base import StorageKey
 
-from db.db_requests.change_access import change_access
+from db.db_models.loader import change_access
 from config import ADMIN
 
 
@@ -13,7 +12,7 @@ router = Router()
 
 
 @router.message(Command('get_access'))
-async def cmd_пуе_фссуыы(message: Message, state: FSMContext):
+async def cmd_get_access(message: Message, state: FSMContext):
     await message.answer(f'Ваша заявка отправлена администратору. Ожидайте!')
     bot = message.bot
     await bot.send_message(ADMIN, f'Запрос доступа к сценариям от пользователя: @{message.from_user.username}',
@@ -36,11 +35,8 @@ async def handle_admin_decision_access(callback: CallbackQuery):
     bot = callback.message.bot
     if action == 'approve':
         await callback.message.edit_text(f'Запрос доступа пользователя @{username} одобрен', reply_markup=None)
-        access = change_access_in_db(user_id)
-        if access:
-            await bot.send_message(user_id, text='Запрос доступа одобрен')
-        else:
-            await bot.send_message(ADMIN, text=f'{c}')
+        change_access_in_db(user_id)
+        await bot.send_message(user_id, text='Запрос доступа одобрен')
     else:
         await bot.send_message(user_id, text='Запрос доступа отклонен администратором')
         await callback.message.edit_text(f'Запрос доступа пользователя @{username} отклонен', reply_markup=None)
@@ -48,4 +44,4 @@ async def handle_admin_decision_access(callback: CallbackQuery):
 
 
 def change_access_in_db(user_id):
-    return change_access(user_id)
+    change_access(user_id)

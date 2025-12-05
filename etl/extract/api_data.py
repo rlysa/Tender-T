@@ -1,57 +1,19 @@
-from time import sleep
-
-import requests
 import re
-from bs4 import BeautifulSoup
 import time
-from datetime import datetime, date
+from datetime import date
 
-from config import *
-
-
-def make_request(url):
-    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)',
-               'Authorization': f'Bearer {ZAKUPKI_TOKEN}',
-               'Content-Type': 'application/json'}
-    max_retries = 3
-    for attempt in range(max_retries):
-        try:
-            response = requests.get(url, headers=headers, timeout=30)
-
-            if response.status_code == 200:
-                soup = BeautifulSoup(response.text, 'html.parser')
-
-                if any(text in response.text.lower() for text in ['captcha', 'blocked', 'доступ запрещен']):
-                    time.sleep(10 * (attempt + 1))
-                    continue
-
-                return soup
-
-            elif response.status_code == 429:
-                wait_time = 30 * (attempt + 1)
-                time.sleep(wait_time)
-
-            else:
-                time.sleep(5)
-
-        except requests.exceptions.RequestException as e:
-            time.sleep(5 * (attempt + 1))
-
-        except Exception as e:
-            time.sleep(5)
-
-    return None
+from services.requests_service import make_request
+from etl.load.loader import *
+from etl.extract.db_connector import *
 
 
-def get_cards(words):
-    cards, urls = {}, []
+def get_cards(words, script_id):
     try:
         start_date, end_date = get_date()
         url = get_url(start_date, end_date)
         for index, word in enumerate(words):
             time.sleep(1)
             url_word = url.replace('searchString=&', f'searchString={word.strip()}&')
-            urls.append(url_word)
             soup_word = make_request(url_word)
             if not soup_word:
                 continue
@@ -73,36 +35,28 @@ def get_cards(words):
                 cost = cost.get_text().strip().split(' ')[0].strip()
                 cost = float(re.sub(r'\xa0', '', cost).replace(',', '.'))
                 link = f'https://zakupki.gov.ru{block.find('div', class_='registry-entry__header-mid__number').find('a').get('href')}'
-                links = ['https://zakupki.gov.ru/epz/order/notice/zk20/view/common-info.html?regNumber=0112200000825004885',
-                         'https://zakupki.gov.ru/epz/order/notice/ea20/view/common-info.html?regNumber=0865200000325001444',
-                         'https://zakupki.gov.ru/epz/order/notice/zk20/view/common-info.html?regNumber=0340100009725000079']
-                # if link not in links:
-                #     continue
-                link_on_docs = f'https://zakupki.gov.ru{block.find('div', class_='href d-flex').find('a').get('href')}'
-                soup_info = make_request(link)
-                region = soup_info.find('span', class_='section__title', string='Регион')
-                region = region.find_next('span', class_='section__info').get_text(strip=True) if region else ''
-                cards[number] = {'name': name, 'region': region, 'cost': cost, 'link': link, 'link_on_docs': link_on_docs}
+
+                add_card(number, name, cost, link, script_id)
     except Exception as e:
         raise Exception(f'Ошибка при поиске карточек {e}')
-    return [cards, urls]
 
 
-def get_lots(cards):
-    lots, card_lots = {}, {}
+def get_lots(script_id):
     try:
+        cards = get_not_looked_cards(script_id)
         for index, card in enumerate(cards):
             number, link = card
             soup_info = make_request(link)
+            region = soup_info.find('span', class_='section__title', string='Регион')
+            region = region.find_next('span', class_='section__info').get_text(strip=True) if region else None
+            if region:
+                set_region(number, region, script_id)
+
             info = soup_info.find('div', class_='container', id='positionKTRU')
-            card_lots[number] = []
             if not info:
-                link_on_lots = soup_info.find('div', class_='tabsNav d-flex')
-                if 'Список лотов' in link_on_lots.get_text():
-                    print(link, 'lots')
-                else:
-                    print(link, 'docs')
+                continue
             else:
+                lots = {}
                 table = info.find('div', id=re.compile(r'purchaseObjectTruTable\d+'))
                 if not table:
                     continue
@@ -158,12 +112,13 @@ def get_lots(cards):
                                          'description': description.strip(),
                                          'count': float(re.sub(r'\xa0', '', count).replace(',', '.')),
                                          'cost': float(re.sub(r'\xa0', '', cost_pr.replace(',', '.')))}
-                        card_lots[number].append(article)
                     except Exception as e:
-                        print('!----------', link, e)
+                        raise Exception(f'Ошибка получении информации лотов {e}')
+            for lot in lots:
+                add_lot(lot, lots[lot]['name'], lots[lot]['description'], lots[lot]['count'], lots[lot]['cost'], number)
+            set_status('cards', 'number', number, 'get_lots', f'AND script_id = {script_id}')
     except Exception as e:
         raise Exception(f'Ошибка при поиске лотов {e}')
-    return [card_lots, lots]
 
 
 def get_date(period=6):

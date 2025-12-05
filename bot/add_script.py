@@ -2,13 +2,14 @@ from aiogram import Router
 from aiogram.filters import Command
 from aiogram.types import Message, FSInputFile
 from aiogram.fsm.context import FSMContext
-import asyncio
+import os
 
-from .forms import Form
-from src.__all_func import *
-from src.prompts import *
-from db.db_requests.new_script import add_new_script
-from db.db_requests.get_scripts import get_scripts
+from bot.forms import Form
+from config import ADMIN, COST_INPUT_TOKENS, COST_OUTPUT_TOKENS
+from db.db_models.loader import *
+from utils.files import get_text_from_file, get_text_by_words
+from services.ai_service import make_request_to_ai
+from services.prompts import *
 
 
 router = Router()
@@ -34,13 +35,16 @@ async def cmd_add_script_name(message: Message, state: FSMContext):
         if len(message.text) > 20:
             await message.answer('Слишком длинное название. Введите другое название')
             return
+        script_id = add_new_script(message.text, message.from_user.id)
+
         await state.set_state(Form.add_script_f1)
-        await state.update_data(name=message.text)
+        await state.update_data(script_id=script_id)
         await message.answer(f'Для создания нового сценария необходимо 2 файла')
         await message.answer(f'Отправьте файл с категориями товаров в формате txt, оформленный по шаблону')
-        project_root = os.path.dirname(os.path.dirname(os.path.abspath('Tender-T')))
-        path = os.path.join(project_root, 'Tender-T', 'files', 'test', 'категории.txt')
-        await message.answer_document(document=FSInputFile(path))
+        project_root = os.path.dirname(os.path.abspath('Tender-ETL'))
+        path = os.path.join(project_root, 'db', 'files', 'test', 'категории.txt')
+        if os.path.exists(path):
+            await message.answer_document(document=FSInputFile(path))
     except Exception as e:
         await message.bot.send_message(ADMIN, f'Ошибка в cmd_add_script_name для пользователя {message.from_user.id}): {str(e)}')
 
@@ -66,8 +70,8 @@ async def cmd_add_script_f1(message: Message, state: FSMContext):
     try:
         file = await bot.get_file(file_id)
         file_path = file.file_path
-        project_root = os.path.dirname(os.path.dirname(os.path.abspath('Tender-T')))
-        save_path = os.path.join(project_root, 'Tender-T', 'downloads', f'{message.from_user.id}_{file_name}')
+        project_root = os.path.dirname(os.path.abspath('Tender-ETL'))
+        save_path = os.path.join(project_root, 'db', 'files', 'downloads', f'{message.from_user.id}_{file_name}')
         await bot.download_file(file_path, save_path)
         await message.answer(f'Файл сохранен')
     except Exception as e:
@@ -75,21 +79,24 @@ async def cmd_add_script_f1(message: Message, state: FSMContext):
         await bot.send_message(ADMIN, f'Ошибка при сохранении файла1:\n{e}')
         return
     try:
+        data = await state.get_data()
         try:
             product_categories = get_text_from_file(save_path).lower()
+            categories_name_id = add_categories(data['script_id'], product_categories.strip().split('\n'))
         except Exception as e:
-            await message.answer(f'Файл пустой')
+            await message.answer(f'Ошибка чтения файла {e}')
             await message.bot.send_message(ADMIN, f'Ошибка чтения файла {e}')
             return
         await message.answer(f'Файл отправлен на обработку')
         try:
-            key_words = make_request_to_ai(prompt_get_key_words, product_categories)
+            keywords = make_request_to_ai(prompt_get_key_words, product_categories)
         except Exception as e:
             await message.answer('Не удалось получить ответ от AI')
             await message.bot.send_message(ADMIN, f'Ошибка AI {e}')
             return
-        key_words, prompt_tokens, completion_tokens = key_words
-        if key_words:
+        keywords, prompt_tokens, completion_tokens = keywords
+        if keywords:
+            add_key_words(data['script_id'], keywords.strip().split('\n'), categories_name_id)
             cost = prompt_tokens / 1000 * COST_INPUT_TOKENS * 81 + completion_tokens / 1000 * COST_OUTPUT_TOKENS * 81
             await message.answer(f'Выделены ключевые слова')
         else:
@@ -105,12 +112,12 @@ async def cmd_add_script_f1(message: Message, state: FSMContext):
 
     try:
         await state.update_data(cost=cost)
-        await state.update_data(product_categories=product_categories.split('\n'))
-        await state.update_data(key_words=key_words)
+        await state.update_data(categories_name_id=categories_name_id)
         await message.answer(f'Отправьте файл с товарами в формате xlsx, оформленный по шаблону')
-        project_root = os.path.dirname(os.path.dirname(os.path.abspath('Tender-T')))
-        path = os.path.join(project_root, 'Tender-T', 'files', 'test', 'товары.xlsx')
-        await message.answer_document(document=FSInputFile(path))
+        project_root = os.path.dirname(os.path.abspath('Tender-ETL'))
+        path = os.path.join(project_root, 'db', 'files', 'test', 'товары.xlsx')
+        if os.path.exists(path):
+            await message.answer_document(document=FSInputFile(path))
     except Exception as e:
         await bot.send_message(ADMIN, f'Ошибка  cmd_add_script_f1 для пользователя {message.from_user.id}): {str(e)}')
 
@@ -136,8 +143,8 @@ async def cmd_add_script_f2(message: Message, state: FSMContext):
     try:
         file = await bot.get_file(file_id)
         file_path = file.file_path
-        project_root = os.path.dirname(os.path.dirname(os.path.abspath('Tender-T')))
-        save_path = os.path.join(project_root, 'Tender-T', 'downloads', f'{message.from_user.id}_{file_name}')
+        project_root = os.path.dirname(os.path.abspath('Tender-ETL'))
+        save_path = os.path.join(project_root, 'db', 'files', 'downloads', f'{message.from_user.id}_{file_name}')
         await bot.download_file(file_path, save_path)
         await message.answer(f'Файл сохранен')
     except Exception as e:
@@ -146,7 +153,7 @@ async def cmd_add_script_f2(message: Message, state: FSMContext):
         return
     try:
         data = await state.get_data()
-        product_categories = data['product_categories']
+        product_categories = data['categories_name_id']
         try:
             file_text = get_text_from_file(save_path).lower()
         except Exception as e:
@@ -161,14 +168,12 @@ async def cmd_add_script_f2(message: Message, state: FSMContext):
 
         title = file_text['title']
         file_text.pop('title')
-        products = []
         cost_scr = 0
         await message.answer(f'Файл отправлен на обработку')
 
         for category in file_text:
             try:
                 answer = make_request_to_ai(prompt_get_key_info_our_products + title, file_text[category])
-                print(answer)
             except Exception as e:
                 await message.answer(f'Ошибка обработки категории {category}')
                 await bot.send_message(ADMIN, f'Ошибка AI для категории {category}: {str(e)}')
@@ -179,48 +184,17 @@ async def cmd_add_script_f2(message: Message, state: FSMContext):
 
             prompt_tokens, completion_tokens = answer[1], answer[2]
             cost_scr += prompt_tokens / 1000 * COST_INPUT_TOKENS * 81 + completion_tokens / 1000 * COST_OUTPUT_TOKENS * 81
-            for product in answer[0].strip().replace('\n\n', '\n').split('\n'):
-                if not product.strip():
-                    continue
-                if len(product.strip().split(':', 1)) == 2:
-                    article, name_cost = [i.strip() for i in product.strip().split(':', 1)]
-                    if len(name_cost.split(';', 1)) == 2:
-                        name, cost = [i.strip() for i in name_cost.split(';', 1)]
-                        products.append(f'{category};{article};{name};{cost}')
-        if products == []:
-            await message.answer(f'Не удалось обработать файл. Возможно он пустой')
-            return
-        products = '\n'.join(products)
+            add_products(data['script_id'], answer[0].strip().split('\n'), product_categories[category])
         await message.answer(f'Файл обработан')
     except Exception as e:
         await message.answer(f'Не удалось обработать файл')
         await bot.send_message(ADMIN, f'Ошибка при выделении товаров:\n{e}')
         return
-    try:
-        add_new_script_to_db(data['name'], message.from_user.id, product_categories, data['key_words'], products)
-    except Exception as e:
-        await bot.send_message(ADMIN, f'Ошибка при сохранении сценария в бд:\n{e}')
-        return
-    finally:
-        os.remove(save_path)
+    os.remove(save_path)
 
     try:
         await message.answer('Сценарий создан')
         await message.answer(f'Стоимость создания сценария: {cost_scr + data['cost']}₽')
         await state.clear()
-
-        await asyncio.sleep(60)
-        documents, costs = get_tender_cards([script for script in get_scripts(message.from_user.id) if script[0] == data['name']])
-        if not documents:
-            await message.answer('Карточки не найдены')
-        for index, doc in enumerate(documents):
-            document_file = FSInputFile(doc)
-            await message.answer_document(document=document_file)
-            await message.answer(f'Стоимость: {costs[index]}₽')
     except Exception as e:
         await message.answer('Ошибка при поиске тендеров')
-
-
-def add_new_script_to_db(name, user_id, product_categories, key_words, products):
-    product_categories = '\n'.join(product_categories)
-    add_new_script(name, user_id, product_categories, key_words, products)

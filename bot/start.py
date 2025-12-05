@@ -6,7 +6,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.storage.base import StorageKey
 
 from .forms import Form
-from db.db_requests.new_user import add_new_user, is_new
+from db.db_models.loader import add_new_user
+from db.db_models.db_connector import is_new
 from config import ADMIN, ADMIN_USERNAME
 
 
