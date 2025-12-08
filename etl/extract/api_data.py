@@ -7,10 +7,11 @@ from etl.load.loader import *
 from etl.extract.db_connector import *
 
 
-def get_cards(words, script_id):
+def get_cards(script_id):
     try:
         start_date, end_date = get_date()
         url = get_url(start_date, end_date)
+        words = get_keywords(script_id)
         for index, word in enumerate(words):
             time.sleep(1)
             url_word = url.replace('searchString=&', f'searchString={word.strip()}&')
@@ -45,21 +46,21 @@ def get_lots(script_id):
     try:
         cards = get_not_looked_cards(script_id)
         for index, card in enumerate(cards):
-            number, link = card
+            card_id, number, link = card
             soup_info = make_request(link)
             region = soup_info.find('span', class_='section__title', string='Регион')
             region = region.find_next('span', class_='section__info').get_text(strip=True) if region else None
             if region:
-                set_region(number, region, script_id)
+                set_region(card_id, region)
 
             info = soup_info.find('div', class_='container', id='positionKTRU')
             if not info:
-                continue
+                set_status('cards', card_id, 'finished')
             else:
                 lots = {}
                 table = info.find('div', id=re.compile(r'purchaseObjectTruTable\d+'))
                 if not table:
-                    continue
+                    set_status('cards', card_id, 'finished')
                 rows = table.find_all('tr', class_='tableBlock__row')
                 for row in rows:
                     try:
@@ -103,11 +104,10 @@ def get_lots(script_id):
                                                         description += f'{char_name}: {char_value} {char_unit}; '
                                                     else:
                                                         description += f'{char_name}: {char_value}; '
-                        article = f'{number}-{article}'
                         if article in lots:
                             article += f'-1'
                             while article in lots:
-                                article = '-'.join(article.split('-')[:-1]) + '-' + str(int(article.split('-')[-1]) + 1)
+                                article = '-'.join(article.split('-')[0:2]) + '-' + str(int(article.split('-')[-1]) + 1)
                         lots[article] = {'name': pr_name,
                                          'description': description.strip(),
                                          'count': float(re.sub(r'\xa0', '', count).replace(',', '.')),
@@ -115,8 +115,8 @@ def get_lots(script_id):
                     except Exception as e:
                         raise Exception(f'Ошибка получении информации лотов {e}')
             for lot in lots:
-                add_lot(lot, lots[lot]['name'], lots[lot]['description'], lots[lot]['count'], lots[lot]['cost'], number)
-            set_status('cards', 'number', number, 'get_lots', f'AND script_id = {script_id}')
+                add_lot(lot, lots[lot]['name'], lots[lot]['description'], lots[lot]['count'], lots[lot]['cost'], card_id)
+            set_status('cards', card_id, 'get_lots')
     except Exception as e:
         raise Exception(f'Ошибка при поиске лотов {e}')
 

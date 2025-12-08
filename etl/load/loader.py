@@ -4,10 +4,10 @@ import sqlite3
 from config import DB_NAME
 
 
-def set_status(table, field, field_id, status, inf=''):
+def set_status(table, id_value, status):
     connection = sqlite3.connect(DB_NAME)
     cursor = connection.cursor()
-    cursor.execute(f'''UPDATE {table} SET status = ? WHERE {field} = ? {inf}''', (status, field_id))
+    cursor.execute(f'''UPDATE {table} SET status = ? WHERE id = ? ''', (status, id_value))
     connection.commit()
     connection.close()
 
@@ -23,10 +23,10 @@ def add_card(number, name, cost, link, script_id):
     connection.close()
 
 
-def set_region(card_id, region, script_id):
+def set_region(card_id, region):
     connection = sqlite3.connect(DB_NAME)
     cursor = connection.cursor()
-    cursor.execute('''UPDATE cards SET region = ? WHERE number = ? AND script_id = ? ''', (region, card_id, script_id))
+    cursor.execute('''UPDATE cards SET region = ? WHERE id = ? ''', (region, card_id))
     connection.commit()
     connection.close()
 
@@ -41,3 +41,20 @@ def add_lot(article, name, description, count, cost, card_id):
             (article, name, description, count, cost, card_id, 'new'))
         connection.commit()
     connection.close()
+
+
+def set_category(lot_id, category_id):
+    connection = sqlite3.connect(DB_NAME)
+    cursor = connection.cursor()
+    cursor.execute(f'''UPDATE lots SET category_id = ? , status = "filtered" WHERE id = ? ''', (category_id, lot_id))
+    connection.commit()
+    connection.close()
+
+
+def set_match_product(lot_id, product_id):
+    connection = sqlite3.connect(DB_NAME)
+    cursor = connection.cursor()
+    cursor.execute(f'''UPDATE lots SET match_product_id = ? , status = "matched" WHERE id = ? ''', (product_id, lot_id))
+    connection.commit()
+    connection.close()
+

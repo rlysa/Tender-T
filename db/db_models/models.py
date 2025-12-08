@@ -47,6 +47,7 @@ class Categories(SqlAlchemyBase):
     script = relationship('Scripts', back_populates='categories')
     keywords = relationship('Keywords', back_populates='category', cascade='all, delete-orphan')
     products = relationship('Products', back_populates='category', cascade='all, delete-orphan')
+    lots = relationship('Lots', back_populates='category', cascade='all, delete-orphan')
 
 
 class Keywords(SqlAlchemyBase):
@@ -104,8 +105,10 @@ class Lots(SqlAlchemyBase):
     count = sqlalchemy.Column(sqlalchemy.Float, nullable=False)
     cost = sqlalchemy.Column(sqlalchemy.Float, nullable=False)
     card_id = sqlalchemy.Column(sqlalchemy.Integer, ForeignKey('cards.id'), index=True, nullable=False)
+    category_id = sqlalchemy.Column(sqlalchemy.Integer, ForeignKey('categories.id'), index=True)
     status = sqlalchemy.Column(sqlalchemy.String(50), index=True)
     match_product_id = sqlalchemy.Column(sqlalchemy.Integer, ForeignKey('products.id'), index=True)
 
     card = relationship('Cards', back_populates='lots')
     product = relationship('Products', back_populates='lots')
+    category = relationship('Categories', back_populates='products')

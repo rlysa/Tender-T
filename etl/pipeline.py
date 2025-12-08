@@ -1,6 +1,5 @@
 from etl.extract.api_data import *
-from etl.extract.db_connector import *
-from etl.load.loader import *
+from etl.transform.transformer import *
 from config import ADMIN
 
 
@@ -8,25 +7,22 @@ async def run_pipeline(bot):
     scripts = get_scripts(ADMIN)
     for script in scripts:
         script_id, script_name = script
-        keywords = get_keywords(script_id)
         if get_status('scripts', script_id) in ['new', 'finished']:
-            set_status('scripts', 'id', script_id, 'cards')
+            set_status('scripts', script_id, 'cards')
         if get_status('scripts', script_id) == 'cards':
-            get_cards(keywords, script_id)
-            set_status('scripts', 'id', script_id, 'lots')
+            get_cards(script_id)
+            set_status('scripts', script_id, 'lots')
         if get_status('scripts', script_id) == 'lots':
             get_lots(script_id)
-            set_status('scripts', 'id', script_id, 'match')
+            set_status('scripts', script_id, 'filter')
+        if get_status('scripts', script_id) == 'filter':
+            filter_lots(script_id)
+            set_status('scripts', script_id, 'match')
+        if get_status('scripts', script_id) == 'match':
+            match_products_lots(script_id)
+            set_status('scripts', script_id, 'margin')
 
 
-    # successful_files = []
-    # total_costs = []
-    #
-    # try:
-    #     scripts = get_scripts(ADMIN)
-    # except Exception as e:
-    #     raise Exception(f"Критическая ошибка при получении сценариев из БД: {e}")
-    #
     # for script in scripts:
     #     script_id = script[0]
     #     try:
