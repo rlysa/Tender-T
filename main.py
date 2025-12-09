@@ -48,7 +48,7 @@ async def main():
     dp = Dispatcher(bot=bot)
     for router in routers:
         dp.include_router(router)
-    # await asyncio.sleep(120)
+    await asyncio.sleep(1800)
     await asyncio.create_task(timer_scenario_task())
     await dp.start_polling(bot)
 

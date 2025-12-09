@@ -49,9 +49,8 @@ def get_lots(script_id):
             card_id, number, link = card
             soup_info = make_request(link)
             region = soup_info.find('span', class_='section__title', string='Регион')
-            region = region.find_next('span', class_='section__info').get_text(strip=True) if region else None
-            if region:
-                set_region(card_id, region)
+            region = region.find_next('span', class_='section__info').get_text(strip=True) if region else ''
+            set_region(card_id, region)
 
             info = soup_info.find('div', class_='container', id='positionKTRU')
             if not info:
@@ -108,14 +107,14 @@ def get_lots(script_id):
                             article += f'-1'
                             while article in lots:
                                 article = '-'.join(article.split('-')[0:2]) + '-' + str(int(article.split('-')[-1]) + 1)
-                        lots[article] = {'name': pr_name,
+                        lots[article] = {'name': pr_name.strip(),
                                          'description': description.strip(),
                                          'count': float(re.sub(r'\xa0', '', count).replace(',', '.')),
                                          'cost': float(re.sub(r'\xa0', '', cost_pr.replace(',', '.')))}
                     except Exception as e:
                         raise Exception(f'Ошибка получении информации лотов {e}')
-            for lot in lots:
-                add_lot(lot, lots[lot]['name'], lots[lot]['description'], lots[lot]['count'], lots[lot]['cost'], card_id)
+                for lot in lots:
+                    add_lot(lot, lots[lot]['name'], lots[lot]['description'], lots[lot]['count'], lots[lot]['cost'], card_id)
             set_status('cards', card_id, 'get_lots')
     except Exception as e:
         raise Exception(f'Ошибка при поиске лотов {e}')

@@ -69,3 +69,13 @@ def get_text_by_words(file_text, categories):
         return category_products
     except Exception as e:
         raise Exception(f"Ошибка в get_text_by_words: {str(e)}")
+
+
+def update_file(path, result):
+    try:
+        with open(path, 'a', encoding='utf-8') as file:
+            file.write(result)
+        return True
+    except Exception as e:
+        raise Exception(f'Ошибка сохранения файла {path}: {str(e)}')
+

@@ -51,10 +51,17 @@ def set_category(lot_id, category_id):
     connection.close()
 
 
+def set_relevant(card_id, relevant):
+    connection = sqlite3.connect(DB_NAME)
+    cursor = connection.cursor()
+    cursor.execute(f'''UPDATE cards SET relevant = ? WHERE id = ? ''', (relevant, card_id))
+    connection.commit()
+    connection.close()
+
+
 def set_match_product(lot_id, product_id):
     connection = sqlite3.connect(DB_NAME)
     cursor = connection.cursor()
     cursor.execute(f'''UPDATE lots SET match_product_id = ? , status = "matched" WHERE id = ? ''', (product_id, lot_id))
     connection.commit()
     connection.close()
-
