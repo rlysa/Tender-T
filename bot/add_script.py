@@ -41,7 +41,7 @@ async def cmd_add_script_name(message: Message, state: FSMContext):
         await state.update_data(script_id=script_id)
         await message.answer(f'Для создания нового сценария необходимо 2 файла')
         await message.answer(f'Отправьте файл с категориями товаров в формате txt, оформленный по шаблону')
-        project_root = os.path.dirname(os.path.abspath('Tender-ETL'))
+        project_root = os.path.dirname(os.path.abspath('Tender-T'))
         path = os.path.join(project_root, 'db', 'files', 'test', 'категории.txt')
         if os.path.exists(path):
             await message.answer_document(document=FSInputFile(path))
@@ -70,7 +70,7 @@ async def cmd_add_script_f1(message: Message, state: FSMContext):
     try:
         file = await bot.get_file(file_id)
         file_path = file.file_path
-        project_root = os.path.dirname(os.path.abspath('Tender-ETL'))
+        project_root = os.path.dirname(os.path.abspath('Tender-T'))
         save_path = os.path.join(project_root, 'db', 'files', 'downloads', f'{message.from_user.id}_{file_name}')
         await bot.download_file(file_path, save_path)
         await message.answer(f'Файл сохранен')
@@ -114,7 +114,7 @@ async def cmd_add_script_f1(message: Message, state: FSMContext):
         await state.update_data(cost=cost)
         await state.update_data(categories_name_id=categories_name_id)
         await message.answer(f'Отправьте файл с товарами в формате xlsx, оформленный по шаблону')
-        project_root = os.path.dirname(os.path.abspath('Tender-ETL'))
+        project_root = os.path.dirname(os.path.abspath('Tender-T'))
         path = os.path.join(project_root, 'db', 'files', 'test', 'товары.xlsx')
         if os.path.exists(path):
             await message.answer_document(document=FSInputFile(path))
@@ -143,7 +143,7 @@ async def cmd_add_script_f2(message: Message, state: FSMContext):
     try:
         file = await bot.get_file(file_id)
         file_path = file.file_path
-        project_root = os.path.dirname(os.path.abspath('Tender-ETL'))
+        project_root = os.path.dirname(os.path.abspath('Tender-T'))
         save_path = os.path.join(project_root, 'db', 'files', 'downloads', f'{message.from_user.id}_{file_name}')
         await bot.download_file(file_path, save_path)
         await message.answer(f'Файл сохранен')

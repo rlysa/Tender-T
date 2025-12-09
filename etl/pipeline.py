@@ -33,7 +33,7 @@ async def run_pipeline(bot):
             set_status('scripts', script_id, 'margin')
         if get_status('scripts', script_id) == 'margin':
             try:
-                project_root = os.path.dirname(os.path.abspath('Tender-ETL'))
+                project_root = os.path.dirname(os.path.abspath('Tender-T'))
                 path = os.path.join(project_root, 'db', 'files', f'{script_name}.txt')
                 count_margin(script_id, path)
                 for user in get_users_with_access():
