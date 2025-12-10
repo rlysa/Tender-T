@@ -13,6 +13,7 @@ def filter_lots(script_id):
         for lot in lots:
             if any(word[:-2:].lower() in lot[1].lower() for word in category[1].split(' ')):
                 set_category(lot[0], category[0])
+                set_status('lots', lot[0], 'filtered')
             else:
                 set_status('lots', lot[0], 'finished')
 
@@ -51,7 +52,7 @@ def match_products_lots(script_id):
                             set_match_product(lot, product)
         for lot in lots:
             if lot.split(':')[0] not in true_lots:
-                set_status('lots', lot.split(':')[0], 'finished')
+                set_status('lots', lot.split(':')[0], 'matched')
 
 
 def relevant_cards(script_id):
@@ -98,3 +99,4 @@ def count_margin(script_id, path):
         for lot in lots_products:
             set_status('lots', lot[0], 'finished')
         set_status('cards', card_id, 'finished')
+    set_status('scripts', script_id, 'finished')

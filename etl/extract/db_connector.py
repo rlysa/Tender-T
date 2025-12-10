@@ -118,7 +118,7 @@ def get_matched_lots_for_card(card_id):
 def get_relevant_cards(script_id):
     connection = sqlite3.connect(DB_NAME)
     cursor = connection.cursor()
-    cards = cursor.execute(F'''SELECT id, number, name, cost, region, link FROM cards WHERE script_id = ? AND status = "process" ''', (script_id,)).fetchall()
+    cards = cursor.execute(F'''SELECT id, number, name, cost, region, link FROM cards WHERE script_id = ? AND status = "processed" ''', (script_id,)).fetchall()
     connection.close()
     return [[i for i in card] for card in cards]
 

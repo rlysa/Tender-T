@@ -38,12 +38,11 @@ async def run_pipeline(bot):
                     path = os.path.join(project_root, 'db', 'files', f'{script_name}.txt')
                     count_margin(script_id, path)
                     for user in get_users_with_access():
-                        if os.path.exists(path):
+                        if get_status('scripts', script_id) == 'finished':
                             await bot.send_document(user, FSInputFile(path))
-                            os.remove(path)
                         else:
                             await bot.send_message(user, f'Нет новых карточех для сценария {script_name}')
-                    set_status('scripts', script_id, 'finished')
+                    os.remove(path)
                 except Exception as e:
                     raise Exception(f'Ошибка в окончании пайплайна {e}')
     except Exception as e:
