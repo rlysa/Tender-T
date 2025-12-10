@@ -4,7 +4,7 @@ import requests
 import requests.exceptions
 import tiktoken
 
-from config import *
+from config import MODEL, AI_API_KEY, MAX_TOKENS, AI_URL
 
 
 def make_request_to_ai(prompt, text, model=MODEL):

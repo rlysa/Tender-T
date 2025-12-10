@@ -1,10 +1,8 @@
-from time import sleep
-
 import requests
 from bs4 import BeautifulSoup
 import time
 
-from config import *
+from config import ZAKUPKI_TOKEN
 
 
 def make_request(url):

@@ -1,8 +1,10 @@
 import asyncio
 from aiogram import Bot, Dispatcher
 
-from config import BOT_TOKEN, ADMIN
+from config import BOT_TOKEN
 from db.db_models.session import init_db
+from db.db_models.db_connector import get_admins
+from db.db_models.loader import set_admins
 from bot.__routers import routers
 from etl.extract.db_connector import get_users_with_access
 from etl.pipeline import run_pipeline
@@ -27,7 +29,8 @@ async def timer_scenario_task():
 
 
             except Exception as e:
-                await bot.send_message(ADMIN, 'Ошибка в таймере')
+                for admin in get_admins():
+                    await bot.send_message(admin, 'Ошибка в таймере')
 
             wait_seconds = TIMER_INTERVAL
             while wait_seconds > 0 and _timer_running:
@@ -38,13 +41,15 @@ async def timer_scenario_task():
     except asyncio.CancelledError:
         raise
     except Exception as e:
-        await bot.send_message(ADMIN, f'Критическая ошибка таймера: {str(e)[:4000]}')
+        for admin in get_admins():
+            await bot.send_message(admin, f'Ошибка таймера: {str(e)[:4000]}')
     finally:
         _timer_running = False
 
 
 async def on_startup():
     global _timer_task
+    set_admins()
     _timer_task = asyncio.create_task(timer_scenario_task())
 
 

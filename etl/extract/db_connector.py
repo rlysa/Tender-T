@@ -3,10 +3,10 @@ import sqlite3
 from config import DB_NAME
 
 
-def get_scripts(user_id):
+def get_scripts():
     connection = sqlite3.connect(DB_NAME)
     cursor = connection.cursor()
-    scripts = cursor.execute('''SELECT id, name FROM scripts WHERE user_id = ?''', (user_id, )).fetchall()
+    scripts = cursor.execute('''SELECT id, name FROM scripts''', ).fetchall()
     connection.close()
     return [[script[0], script[1]] for script in scripts]
 
