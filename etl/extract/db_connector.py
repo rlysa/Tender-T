@@ -138,3 +138,10 @@ def get_not_matched_lots(card_id):
     connection.close()
     return [lot[0] for lot in lots]
 
+
+def get_matched_lots_count(script_id):
+    connection = sqlite3.connect(DB_NAME)
+    cursor = connection.cursor()
+    lots_count = cursor.execute(F'''SELECT COUNT(l.id) FROM lots l JOIN cards c ON l.card_id = c.id WHERE c.script_id = ? AND l.status = "matched"''',(script_id, )).fetchone()
+    connection.close()
+    return lots_count[0]

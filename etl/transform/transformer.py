@@ -53,6 +53,7 @@ def match_products_lots(script_id):
         for lot in lots:
             if lot.split(':')[0] not in true_lots:
                 set_status('lots', lot.split(':')[0], 'matched')
+    return cost
 
 
 def relevant_cards(script_id):
