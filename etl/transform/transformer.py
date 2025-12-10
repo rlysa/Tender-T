@@ -37,7 +37,10 @@ def match_products_lots(script_id):
         products = get_products(script_id, category[0])
         lots_text = '\n'.join(lots)
         products_text = '\n'.join(products)
-        answer = make_request_to_ai(promt_count_margin.replace('//Заменить//', products_text), lots_text)
+        if lots:
+            answer = make_request_to_ai(promt_count_margin.replace('//Заменить//', products_text), lots_text)
+        else:
+            continue
         true_lots = []
         if answer:
             prompt_tokens, completion_tokens = answer[1], answer[2]

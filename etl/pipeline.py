@@ -41,8 +41,8 @@ async def run_pipeline(bot):
                     path = os.path.join(project_root, 'db', 'files', f'{script_name}__{start_time}__лоты.{get_matched_lots_count(script_id)}.txt')
                     count_margin(script_id, path)
                     for user in get_users_with_access():
-                        if get_status('scripts', script_id) == 'finished':
-                            await bot.send_message(f'''Карточек найдено: {cards_find}\nКарточек релевантно: {cards_relevant}\n\nСтоимость: {cost}''')
+                        if get_status('scripts', script_id) == 'finished' and cards_find > 0:
+                            await bot.send_message(user, f'''Карточек найдено: {cards_find}\nКарточек релевантно: {cards_relevant}\n\nСтоимость: {round(cost, 2)}₽''')
                             await bot.send_document(user, FSInputFile(path))
                         else:
                             await bot.send_message(user, f'Нет новых карточех для сценария {script_name}')
