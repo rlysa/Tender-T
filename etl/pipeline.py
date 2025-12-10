@@ -1,7 +1,5 @@
 from aiogram.types import FSInputFile
 import os
-from datetime import datetime
-
 
 from etl.extract.api_data import *
 from etl.transform.transformer import *
