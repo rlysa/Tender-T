@@ -19,17 +19,12 @@ async def timer_scenario_task():
     try:
         while _timer_running:
             try:
-                if ADMIN:
-                    await bot.send_message(ADMIN, 'Запуск сценариев')
+                await bot.send_message(ADMIN, 'Запуск сценариев')
                 await run_pipeline(bot)
 
 
             except Exception as e:
-                if ADMIN:
-                    try:
-                        await bot.send_message(ADMIN, 'Ошибка в таймере')
-                    except:
-                        pass
+                await bot.send_message(ADMIN, 'Ошибка в таймере')
 
             wait_seconds = TIMER_INTERVAL
             while wait_seconds > 0 and _timer_running:
@@ -40,11 +35,7 @@ async def timer_scenario_task():
     except asyncio.CancelledError:
         raise
     except Exception as e:
-        if ADMIN:
-            try:
-                await bot.send_message(ADMIN, f'Критическая ошибка таймера: {str(e)[:4000]}')
-            except:
-                pass
+        await bot.send_message(ADMIN, f'Критическая ошибка таймера: {str(e)[:4000]}')
     finally:
         _timer_running = False
 
