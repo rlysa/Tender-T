@@ -1,8 +1,10 @@
 import asyncio
 from aiogram import Bot, Dispatcher
+
 from config import BOT_TOKEN, ADMIN
 from db.db_models.session import init_db
 from bot.__routers import routers
+from etl.extract.db_connector import get_users_with_access
 from etl.pipeline import run_pipeline
 
 
@@ -19,7 +21,8 @@ async def timer_scenario_task():
     try:
         while _timer_running:
             try:
-                await bot.send_message(ADMIN, 'Запуск сценариев')
+                for user in get_users_with_access():
+                    await bot.send_message(user, 'Запуск сценариев')
                 await run_pipeline(bot)
 
 
