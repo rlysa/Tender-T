@@ -36,22 +36,21 @@ async def run_pipeline(bot):
                 cards_relevant = len(get_relevant_cards(script_id))
                 set_status('scripts', script_id, 'margin')
             if get_status('scripts', script_id) == 'margin':
-                try:
-                    project_root = os.path.dirname(os.path.abspath('Tender-T'))
-                    path = os.path.join(project_root, 'db', 'files', f'{script_name}.txt')
-                    count_margin(script_id, path)
-                    for admin in get_admins():
-                        if f'{admin}'[0] == 9:
-                            bot.send_message(admin, f'''Карточек найдено: {cards_find}\nКарточек релевантно: {cards_relevant}\nКоличество лотов: {get_matched_lots_count(script_id)}\n\nСтоимость: {round(cost, 2)}₽''')
-                            bot.send_message(admin, f'{path} {os.path.exists(path)}')
-                    for user in get_users_with_access():
-                        if get_status('scripts', script_id) == 'finished' and cards_relevant > 0:
-                            await bot.send_document(user, FSInputFile(path), f'''{start_time}\n\nКарточек найдено: {cards_find}\nКарточек релевантно: {cards_relevant}\nКоличество лотов: {get_matched_lots_count(script_id)}\n\nСтоимость: {round(cost, 2)}₽''')
-                        else:
-                            await bot.send_message(user, f'Нет новых карточех для сценария {script_name}')
-                    os.remove(path)
-                except Exception as e:
-                    raise Exception(f'Ошибка в окончании пайплайна: {e}')
+                project_root = os.path.dirname(os.path.abspath('Tender-T'))
+                path = os.path.join(project_root, 'db', 'files', f'{script_name}.txt')
+                count_margin(script_id, path)
+                set_status('scripts', script_id, 'result')
+            if get_status('scripts', script_id) == 'result':
+                for admin in get_admins():
+                    if f'{admin}'[0] == '9':
+                        bot.send_message(admin, f'''Проверка (админ)\n {path} {os.path.exists(path)}\n Карточек найдено: {cards_find}\nКарточек релевантно: {cards_relevant}\nКоличество лотов: {get_matched_lots_count(script_id)}\n\nСтоимость: {round(cost, 2)}₽''')
+                for user in get_users_with_access():
+                    if os.path.exists(path):
+                        await bot.send_document(user, FSInputFile(path), f'''{start_time}\n\nКарточек найдено: {cards_find}\nКарточек релевантно: {cards_relevant}\nКоличество лотов: {get_matched_lots_count(script_id)}\n\nСтоимость: {round(cost, 2)}₽''')
+                    else:
+                        await bot.send_message(user, f'Нет новых карточек для сценария {script_name}')
+                set_finish_status(script_id)
+                set_status('scripts', script_id, 'finished')
     except Exception as e:
         for admin in get_admins():
             await bot.send_message(admin, f'Ошибка при выполнении сценария: {e}')

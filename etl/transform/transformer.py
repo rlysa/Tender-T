@@ -101,6 +101,5 @@ def count_margin(script_id, path):
 
         update_file(path, result)
         for lot in lots_products:
-            set_status('lots', lot[0], 'finished')
-        set_status('cards', card_id, 'finished')
-    set_status('scripts', script_id, 'finished')
+            set_status('lots', lot[0], 'success')
+        set_status('cards', card_id, 'success')
