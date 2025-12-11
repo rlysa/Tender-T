@@ -70,7 +70,7 @@ def set_match_product(lot_id, product_id):
 def set_finish_status(script_id):
     connection = sqlite3.connect(DB_NAME)
     cursor = connection.cursor()
-    cursor.execute(f'''UPDATE lots SET status = "finished" WHERE script_id = ? AND status = "success" ''', (script_id, ))
+    cursor.execute(f'''UPDATE lots SET status = "finished" WHERE status = "success" ''', (script_id, ))
     cursor.execute(f'''UPDATE cards SET status = "finished" WHERE script_id = ? AND status = "success" ''', (script_id, ))
     connection.commit()
     connection.close()
