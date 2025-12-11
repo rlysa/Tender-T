@@ -45,12 +45,12 @@ async def run_pipeline(bot):
                 path = os.path.join(project_root, 'db', 'files', f'{script_name}.txt')
                 for admin in get_admins():
                     if f'{admin}'[0] == '9':
-                        bot.send_message(admin, f'''Проверка (админ)\n {path} {os.path.exists(path)}\n Карточек найдено: {cards_find}\nКарточек релевантно: {cards_relevant}\nКоличество лотов: {get_matched_lots_count(script_id)}\n\nСтоимость: {round(cost, 2)}₽''')
+                        bot.send_message(admin, text=f'''Проверка (админ)\n {path} {os.path.exists(path)}\n Карточек найдено: {cards_find}\nКарточек релевантно: {cards_relevant}\nКоличество лотов: {get_matched_lots_count(script_id)}\n\nСтоимость: {round(cost, 2)}₽''')
                 for user in get_users_with_access():
                     if os.path.exists(path):
-                        await bot.send_document(user, FSInputFile(path), f'''{start_time}\n\nКарточек найдено: {cards_find}\nКарточек релевантно: {cards_relevant}\nКоличество лотов: {get_matched_lots_count(script_id)}\n\nСтоимость: {round(cost, 2)}₽''')
+                        await bot.send_document(user, document=FSInputFile(path), caption=f'''{start_time}\n\nКарточек найдено: {cards_find}\nКарточек релевантно: {cards_relevant}\nКоличество лотов: {get_matched_lots_count(script_id)}\n\nСтоимость: {round(cost, 2)}₽''')
                     else:
-                        await bot.send_message(user, f'Нет новых карточек для сценария {script_name}')
+                        await bot.send_message(user, text=f'Нет новых карточек для сценария {script_name}')
                 set_finish_status(script_id)
                 set_status('scripts', script_id, 'finished')
     except Exception as e:
