@@ -41,6 +41,8 @@ async def run_pipeline(bot):
                 count_margin(script_id, path)
                 set_status('scripts', script_id, 'result')
             if get_status('scripts', script_id) == 'result':
+                project_root = os.path.dirname(os.path.abspath('Tender-T'))
+                path = os.path.join(project_root, 'db', 'files', f'{script_name}.txt')
                 for admin in get_admins():
                     if f'{admin}'[0] == '9':
                         bot.send_message(admin, f'''Проверка (админ)\n {path} {os.path.exists(path)}\n Карточек найдено: {cards_find}\nКарточек релевантно: {cards_relevant}\nКоличество лотов: {get_matched_lots_count(script_id)}\n\nСтоимость: {round(cost, 2)}₽''')
