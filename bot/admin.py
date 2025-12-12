@@ -3,7 +3,7 @@ from aiogram.filters import Command
 from aiogram.types import Message, FSInputFile
 import os
 
-from etl.pipeline import run_pipeline
+from etl.pipeline_run_script import run_pipeline
 from db.db_models.db_connector import get_admins, get_users_with_access
 
 
@@ -24,3 +24,11 @@ async def cmd_run_scripts(message: Message):
         for user in get_users_with_access():
             await message.bot.send_message(user, 'Ручной запуск сценариев')
         await run_pipeline(message.bot)
+
+
+@router.message(Command('restart'))
+async def cmd_restart(message: Message):
+    if message.from_user.id in get_admins():
+        for user in get_users_with_access():
+            await message.bot.send_message(user, 'Ручной перезапуск')
+        await run_pipeline(message.bot, True)

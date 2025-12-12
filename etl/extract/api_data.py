@@ -135,7 +135,7 @@ def get_url(start_date, end_date):
     page_number = ['&pageNumber=1', ''][0]  # ?????????????????????????????
     search_filter = ['&search-filter=Дате+размещения', '']  # ????????????? как будто бесполезно из-за sortBy
     sort_direction = '&sortDirection=' + ['false', 'true'][0]  # убывание/возрастание
-    records_per_page = '&recordsPerPage=_' + ['10', '20', '50'][2]
+    records_per_page = '&recordsPerPage=' + ['10', '20', '50'][2]
     show_lots_info_hidden = '&showLotsInfoHidden=' + ['false', 'true'][0]
     sort_by = '&sortBy=' + ['UPDATE_DATE', 'PUBLISH_DATE', 'PRICE', 'RELEVANCE'][0]
     zakon = ''.join(['&fz44=on', '&fz223=on', '&ppRf615=on', ''])
