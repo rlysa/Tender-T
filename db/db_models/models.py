@@ -29,6 +29,7 @@ class Scripts(SqlAlchemyBase):
     user_id = sqlalchemy.Column(sqlalchemy.Integer, ForeignKey('users.id'), index=True, nullable=False)
     created_at = sqlalchemy.Column(sqlalchemy.DateTime, default=datetime.utcnow)
     status = sqlalchemy.Column(sqlalchemy.String(50), index=True)
+    success = sqlalchemy.Column(sqlalchemy.Boolean)
 
     user = relationship('Users', back_populates='scripts')
     cards = relationship('Cards', back_populates='script', cascade='all, delete-orphan')
@@ -68,6 +69,7 @@ class Products(SqlAlchemyBase):
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True, autoincrement=True)
     article = sqlalchemy.Column(sqlalchemy.String(255), index=True, nullable=False)
     name = sqlalchemy.Column(sqlalchemy.String(255), nullable=False)
+    description = sqlalchemy.Column(sqlalchemy.Text)
     cost = sqlalchemy.Column(sqlalchemy.Float, nullable=False)
     category_id = sqlalchemy.Column(sqlalchemy.Integer, ForeignKey('categories.id'), index=True, nullable=False)
     script_id = sqlalchemy.Column(sqlalchemy.Integer, ForeignKey('scripts.id'), index=True, nullable=False)

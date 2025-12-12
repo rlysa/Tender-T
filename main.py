@@ -7,7 +7,7 @@ from db.db_models.db_connector import get_admins
 from db.db_models.loader import set_admins
 from bot.__routers import routers
 from etl.extract.db_connector import get_users_with_access
-from etl.pipeline import run_pipeline
+from etl.pipeline_run_script import run_pipeline
 
 
 bot = Bot(token=BOT_TOKEN)
