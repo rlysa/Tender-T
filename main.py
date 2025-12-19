@@ -1,5 +1,6 @@
 import asyncio
 from aiogram import Bot, Dispatcher
+from datetime import datetime
 
 from config import BOT_TOKEN
 from db.db_models.session import init_db
@@ -22,19 +23,21 @@ async def timer_scenario_task():
 
     try:
         while _timer_running:
-            try:
-                for user in get_users_with_access():
-                    await bot.send_message(user, 'Запуск сценариев')
-                await run_pipeline(bot)
+            now = datetime.now()
+            current_hour = now.hour
 
+            if current_hour == 12 or current_hour == 18:
+                try:
+                    for user in get_users_with_access():
+                        await bot.send_message(user, f'Запуск сценариев в {now.strftime("%H:%M")}')
+                    await run_pipeline(bot)
+                except Exception as e:
+                    for admin in get_admins():
+                        await bot.send_message(admin, 'Ошибка в таймере')
 
-            except Exception as e:
-                for admin in get_admins():
-                    await bot.send_message(admin, 'Ошибка в таймере')
-
-            wait_seconds = TIMER_INTERVAL
+            wait_seconds = 60 * 60
             while wait_seconds > 0 and _timer_running:
-                chunk = min(5, wait_seconds)
+                chunk = min(60, wait_seconds)
                 await asyncio.sleep(chunk)
                 wait_seconds -= chunk
 
