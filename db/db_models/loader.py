@@ -1,9 +1,8 @@
-import datetime
+from datetime import datetime, timedelta, timezone
 import sqlite3
 
 from config import DB_NAME, ADMIN
 from db.db_models.db_connector import get_users
-from zoneinfo import ZoneInfo
 
 
 def add_new_user(user_id):
@@ -27,7 +26,7 @@ def change_access(user_id):
 def add_new_script(name, user_id):
     connection = sqlite3.connect(DB_NAME)
     cursor = connection.cursor()
-    new_script = cursor.execute('''INSERT INTO scripts (name, user_id, created_at, status) VALUES (?, ?, ?, ?) RETURNING id''', (name, user_id, datetime.datetime.now(ZoneInfo("Europe/Moscow")), 'new')).fetchone()
+    new_script = cursor.execute('''INSERT INTO scripts (name, user_id, created_at, status) VALUES (?, ?, ?, ?) RETURNING id''', (name, user_id, datetime.now(timezone(timedelta(hours=3))), 'new')).fetchone()
     connection.commit()
     connection.close()
     return new_script[0]

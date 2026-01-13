@@ -1,5 +1,6 @@
 from aiogram.types import FSInputFile
 import os
+from datetime  import datetime, timedelta, timezone
 
 from etl.extract.api_data import *
 from etl.transform.transformer import *
@@ -11,7 +12,7 @@ async def run_pipeline(bot, restart=False):
         scripts = get_scripts()
         for script in scripts:
             cards_find, cost, cards_relevant = 0, 0, 0
-            start_time = datetime.now(ZoneInfo("Europe/Moscow")).strftime('%d.%m.%Y %H:%M')
+            start_time = datetime.now(timezone(timedelta(hours=3))).strftime('%d.%m.%Y %H:%M')
             script_id, script_name = script
             if get_status('scripts', script_id) in ['new', 'finished']:
                 set_status('scripts', script_id, 'cards')

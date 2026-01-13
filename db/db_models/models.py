@@ -1,5 +1,4 @@
-from datetime import datetime
-from zoneinfo import ZoneInfo
+from datetime import datetime, timedelta, timezone
 
 import sqlalchemy
 from .session import SqlAlchemyBase
@@ -28,7 +27,7 @@ class Scripts(SqlAlchemyBase):
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True, autoincrement=True)
     name = sqlalchemy.Column(sqlalchemy.String(255), nullable=False)
     user_id = sqlalchemy.Column(sqlalchemy.Integer, ForeignKey('users.id'), index=True, nullable=False)
-    created_at = sqlalchemy.Column(sqlalchemy.DateTime(timezone=True), default=lambda: datetime.now(ZoneInfo("Europe/Moscow")))
+    created_at = sqlalchemy.Column(sqlalchemy.DateTime(timezone=True), default=lambda: datetime.now(timezone(timedelta(hours=3))))
     script_id = sqlalchemy.Column(sqlalchemy.Integer, ForeignKey('scripts.id'), nullable=False)
     status = sqlalchemy.Column(sqlalchemy.String(50), index=True)
     success = sqlalchemy.Column(sqlalchemy.Boolean)
@@ -90,7 +89,7 @@ class Cards(SqlAlchemyBase):
     cost = sqlalchemy.Column(sqlalchemy.Float, nullable=False)
     region = sqlalchemy.Column(sqlalchemy.String(255))
     link = sqlalchemy.Column(sqlalchemy.String(1024), nullable=False)
-    extracted_at = sqlalchemy.Column(sqlalchemy.DateTime(timezone=True), default=lambda: datetime.now(ZoneInfo("Europe/Moscow")))
+    extracted_at = sqlalchemy.Column(sqlalchemy.DateTime(timezone=True), default=lambda: datetime.now(timezone(timedelta(hours=3))))
     script_id = sqlalchemy.Column(sqlalchemy.Integer, ForeignKey('scripts.id'), nullable=False)
     status = sqlalchemy.Column(sqlalchemy.String(50), index=True)
     relevant = sqlalchemy.Column(sqlalchemy.Boolean)

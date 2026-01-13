@@ -1,7 +1,6 @@
 import asyncio
 from aiogram import Bot, Dispatcher
-from datetime import datetime
-from zoneinfo import ZoneInfo
+from datetime import datetime, timedelta, timezone
 
 from config import BOT_TOKEN
 from db.db_models.session import init_db
@@ -24,7 +23,7 @@ async def timer_scenario_task():
 
     try:
         while _timer_running:
-            now = datetime.now(ZoneInfo("Europe/Moscow"))
+            now = datetime.now(timezone(timedelta(hours=3)))
             current_hour = now.hour
 
             if current_hour == 12 or current_hour == 18:

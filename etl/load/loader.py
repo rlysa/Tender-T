@@ -1,6 +1,5 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import sqlite3
-from zoneinfo import ZoneInfo
 
 from config import DB_NAME
 
@@ -19,7 +18,7 @@ def add_card(number, name, cost, link, script_id):
     processed_cards = cursor.execute('''SELECT number FROM cards WHERE script_id = ? ''', (script_id,)).fetchall()
     if (number, ) not in processed_cards:
         cursor.execute('''INSERT INTO cards (number, name, cost, link, extracted_at, script_id, status) VALUES (?, ?, ?, ?, ?, ?, ?)''',
-                       (number, name, cost, link,  datetime.now(ZoneInfo("Europe/Moscow")), script_id, 'new'))
+                       (number, name, cost, link,  datetime.now(timezone(timedelta(hours=3))), script_id, 'new'))
         connection.commit()
     connection.close()
 

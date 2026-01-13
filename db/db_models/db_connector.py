@@ -43,3 +43,22 @@ def get_admins():
     admins = cursor.execute('''SELECT id FROM users WHERE role = 1''').fetchall()
     connection.close()
     return [admin[0] for admin in admins]
+
+
+def get_new_script(user_id):
+    connection = sqlite3.connect(DB_NAME)
+    cursor = connection.cursor()
+    script = cursor.execute('''SELECT id FROM scripts WHERE user_id = ? AND success IS NULL AND status NOT IN ("canceled", "created", "failed") ''', (user_id, )).fetchone()
+    connection.close()
+    return script[0] if script else None
+
+
+def get_categories(script_id):
+    connection = sqlite3.connect(DB_NAME)
+    cursor = connection.cursor()
+    categories = cursor.execute('''SELECT id, name FROM categories WHERE script_id = ?''', (script_id, )).fetchall()
+    connection.close()
+    d = {}
+    for category in categories:
+        d[category[1]] = category[0]
+    return d if d else None
