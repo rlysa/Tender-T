@@ -1,6 +1,6 @@
 import re
 import time
-from datetime import date
+from datetime import date, timedelta
 
 from services.requests_service import make_request
 from etl.load.loader import *
@@ -9,8 +9,7 @@ from etl.extract.db_connector import *
 
 def get_cards(script_id):
     try:
-        start_date, end_date = get_date()
-        url = get_url(start_date, end_date)
+        url = get_url(script_id)
         words = get_keywords(script_id)
         for index, word in enumerate(words):
             time.sleep(1)
@@ -120,17 +119,11 @@ def get_lots(script_id):
         raise Exception(f'Ошибка при поиске лотов {e}')
 
 
-def get_date(period=6):
-    today = date.today()
-    month = today.month - 1 + period
-    year = today.year + month // 12
-    month = month % 12 + 1
-    day = min(today.day, [31, 29 if year % 4 == 0 and (year % 100 != 0 or year % 400 == 0) else 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31][month - 1])
-    end = date(year, month, day)
-    return [today.strftime('%d.%m.%Y'), end.strftime('%d.%m.%Y')]
-
-
-def get_url(start_date, end_date):
+def get_url(script_id):
+    publish_date = get_last_collect_date(script_id)
+    if publish_date:
+        publish_date = datetime.strftime(datetime.strptime(publish_date[0], '%Y-%m-%d') + timedelta(days=1), '%d.%m.%Y')
+    deadline_date = datetime.strftime(date.today() + timedelta(days=7), '%d.%m.%Y')
     morphology = ['&morphology=on', ''][0]
     page_number = ['&pageNumber=1', ''][0]  # ?????????????????????????????
     search_filter = ['&search-filter=Дате+размещения', '']  # ????????????? как будто бесполезно из-за sortBy
@@ -142,10 +135,9 @@ def get_url(start_date, end_date):
     stage = ''.join(['&af=on', '&ca=on', '&pc=on', '&pa=on',
                      ''])  # Подача заявок/Работа комиссии/Закупка завершена/Закупка отменена
     currency_id_general = '-1'  # ???????????????????????????????????????
-    publish_date_from = ['&publishDateFrom=' + start_date, ''][1]
-    publish_date_to = ['&publishDateTo=' + start_date, ''][1]
-    appl_submission_close_date_from = ['&applSubmissionCloseDateFrom=' + start_date, ''][0]
-    appl_submission_close_date_to = ['&applSubmissionCloseDateTo=' + end_date, ''][0]
+    publish_date_from = '&publishDateFrom=' + publish_date if publish_date else ''
+    publish_date_to = ['&publishDateTo=', ''][1]
+    appl_submission_close_date_from = ['&applSubmissionCloseDateFrom=' + deadline_date, ''][0]
 
-    url = f'https://zakupki.gov.ru/epz/order/extendedsearch/results.html?searchString={morphology}{zakon}{stage}{appl_submission_close_date_from}{appl_submission_close_date_to}{records_per_page}'
+    url = f'https://zakupki.gov.ru/epz/order/extendedsearch/results.html?searchString={morphology}{zakon}{stage}{publish_date_from}{appl_submission_close_date_from}{records_per_page}'
     return url

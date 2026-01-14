@@ -145,3 +145,11 @@ def get_matched_lots_count(script_id):
     lots_count = cursor.execute(f'''SELECT COUNT(l.id) FROM lots l JOIN cards c ON l.card_id = c.id WHERE c.script_id = ? AND l.status = "matched"''',(script_id, )).fetchone()
     connection.close()
     return lots_count[0]
+
+
+def get_last_collect_date(script_id):
+    connection = sqlite3.connect(DB_NAME)
+    cursor = connection.cursor()
+    last_collect_date = cursor.execute(f'''SELECT last_collect_date FROM scripts WHERE id = ? ''', (script_id,)).fetchone()
+    connection.close()
+    return last_collect_date

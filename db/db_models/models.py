@@ -28,7 +28,7 @@ class Scripts(SqlAlchemyBase):
     name = sqlalchemy.Column(sqlalchemy.String(255), nullable=False)
     user_id = sqlalchemy.Column(sqlalchemy.Integer, ForeignKey('users.id'), index=True, nullable=False)
     created_at = sqlalchemy.Column(sqlalchemy.DateTime(timezone=True), default=lambda: datetime.now(timezone(timedelta(hours=3))))
-    script_id = sqlalchemy.Column(sqlalchemy.Integer, ForeignKey('scripts.id'), nullable=False)
+    last_collect_date = sqlalchemy.Column(sqlalchemy.Date)
     status = sqlalchemy.Column(sqlalchemy.String(50), index=True)
     success = sqlalchemy.Column(sqlalchemy.Boolean)
 
