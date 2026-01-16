@@ -122,7 +122,7 @@ def get_lots(script_id):
 def get_url(script_id):
     publish_date = get_last_collect_date(script_id)
     if publish_date:
-        publish_date = datetime.strftime(datetime.strptime(publish_date[0], '%Y-%m-%d') + timedelta(days=1), '%d.%m.%Y')
+        publish_date = datetime.strftime(datetime.strptime(publish_date, '%Y-%m-%d') + timedelta(days=1), '%d.%m.%Y')
     deadline_date = datetime.strftime(date.today() + timedelta(days=7), '%d.%m.%Y')
     morphology = ['&morphology=on', ''][0]
     page_number = ['&pageNumber=1', ''][0]  # ?????????????????????????????
