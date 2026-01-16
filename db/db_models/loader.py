@@ -56,6 +56,24 @@ def add_key_words(script_id, keywords, categories_name_id):
     connection.close()
 
 
+def set_template_category(category_id, template):
+    connection = sqlite3.connect(DB_NAME)
+    cursor = connection.cursor()
+    cursor.execute('''UPDATE categories SET template = ? WHERE id = ?''', (template, category_id))
+    connection.commit()
+    connection.close()
+
+
+def add_not_transformed_products(category_id, script_id, products):
+    connection = sqlite3.connect(DB_NAME)
+    cursor = connection.cursor()
+    for product in products.split('\n'):
+        if product.strip():
+            cursor.execute('''INSERT OR IGNORE INTO products (category_id, script_id, raw_data) VALUES (?, ?, ?)''',(category_id, script_id, product))
+            connection.commit()
+    connection.close()
+
+
 def add_products(script_id, products, category_id):
     connection = sqlite3.connect(DB_NAME)
     cursor = connection.cursor()
@@ -68,6 +86,22 @@ def add_products(script_id, products, category_id):
                     cursor.execute('''INSERT INTO products (article, name, cost, category_id, script_id) VALUES (?, ?, ?, ?, ?)''',
                                    (article, name, float(cost), category_id, script_id))
     connection.commit()
+    connection.close()
+
+
+def update_products(products, temp):
+    connection = sqlite3.connect(DB_NAME)
+    cursor = connection.cursor()
+    temp = temp.replace('>', '').replace('<', '').split(';')
+    for product in products:
+        if product.strip():
+            if len(product.strip().split(':', 1)) == 2:
+                pr_id, article_name_cost_desc = [i.strip() for i in product.strip().split(':', 1)]
+                if len(article_name_cost_desc.split(';', 3)) == 4:
+                    article, name, cost, desc = [i.strip() for i in article_name_cost_desc.split(';', 3)]
+                    desc = '; '.join([f'{temp[index]}: {value}' for index, value in enumerate(desc.split(';'))])
+                    cursor.execute('''UPDATE products SET article = ?, name = ?, description = ?, cost = ? WHERE id = ? ''',(article, name, desc, float(cost) if cost.replace('.', '').replace(',', '').isdigit() else None , pr_id))
+                    connection.commit()
     connection.close()
 
 

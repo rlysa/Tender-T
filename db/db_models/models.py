@@ -45,6 +45,7 @@ class Categories(SqlAlchemyBase):
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True, autoincrement=True)
     name = sqlalchemy.Column(sqlalchemy.String(255), nullable=False)
     script_id = sqlalchemy.Column(sqlalchemy.Integer, ForeignKey('scripts.id'), index=True, nullable=False)
+    template = sqlalchemy.Column(sqlalchemy.Text)
 
     script = relationship('Scripts', back_populates='categories')
     keywords = relationship('Keywords', back_populates='category', cascade='all, delete-orphan')
@@ -68,12 +69,13 @@ class Products(SqlAlchemyBase):
     __tablename__ = 'products'
 
     id = sqlalchemy.Column(sqlalchemy.Integer, primary_key=True, autoincrement=True)
-    article = sqlalchemy.Column(sqlalchemy.String(255), index=True, nullable=False)
-    name = sqlalchemy.Column(sqlalchemy.String(255), nullable=False)
+    article = sqlalchemy.Column(sqlalchemy.String(255), index=True)
+    name = sqlalchemy.Column(sqlalchemy.String(255))
     description = sqlalchemy.Column(sqlalchemy.Text)
-    cost = sqlalchemy.Column(sqlalchemy.Float, nullable=False)
+    cost = sqlalchemy.Column(sqlalchemy.Float)
     category_id = sqlalchemy.Column(sqlalchemy.Integer, ForeignKey('categories.id'), index=True, nullable=False)
     script_id = sqlalchemy.Column(sqlalchemy.Integer, ForeignKey('scripts.id'), index=True, nullable=False)
+    raw_data = sqlalchemy.Column(sqlalchemy.Text, nullable=False, unique=True)
 
     category = relationship('Categories', back_populates='products')
     script = relationship('Scripts', back_populates='products', cascade='all, delete-orphan')

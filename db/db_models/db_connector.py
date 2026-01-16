@@ -62,3 +62,19 @@ def get_categories(script_id):
     for category in categories:
         d[category[1]] = category[0]
     return d if d else None
+
+
+def get_raw_products(script_id, category_id):
+    connection = sqlite3.connect(DB_NAME)
+    cursor = connection.cursor()
+    products = cursor.execute('''SELECT id, raw_data FROM products WHERE script_id = ? AND category_id = ? AND article IS NULL ''', (script_id, category_id)).fetchall()
+    connection.close()
+    return [[product[0], product[1]] for product in products]
+
+
+def get_template_category(category_id):
+    connection = sqlite3.connect(DB_NAME)
+    cursor = connection.cursor()
+    temp = cursor.execute('''SELECT template FROM categories WHERE id = ?''', (category_id,)).fetchone()
+    connection.close()
+    return temp[0]
