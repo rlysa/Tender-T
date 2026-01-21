@@ -34,11 +34,12 @@ def get_text_from_file(file_name):
                         if isinstance(cell.value, (int, float)):
                             fmt = cell.number_format
                             try:
-                                row_text += str(cell.value) if fmt == 'General' else format(cell.value, '.2f') + ' '
+                                row_text += str(cell.value) if fmt == 'General' else format(cell.value, '.2f')
                             except:
-                                row_text += str(cell.value) + ' '
+                                row_text += str(cell.value)
                         else:
-                            row_text += str(cell.value).lower().replace('\n', '') + ' '
+                            row_text += str(cell.value).lower().replace('\n', '')
+                    row_text += '; '
                 if row_text.strip():
                     file_text += row_text.strip() + '\n'
         while '\n\n' in file_text:

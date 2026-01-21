@@ -59,6 +59,20 @@ def set_relevant(card_id, relevant):
     connection.close()
 
 
+def update_lots(lots, temp):
+    connection = sqlite3.connect(DB_NAME)
+    cursor = connection.cursor()
+    temp = temp.replace('>', '').replace('<', '').split(';')
+    for lot in lots:
+        if lot.strip():
+            if len(lot.strip().split(':', 1)) == 2:
+                lot_id, desc = [i.strip() for i in lot.strip().split(':', 1)]
+                desc = '; '.join([f'{temp[index]}: {value}' for index, value in enumerate(desc.split(';'))])
+                cursor.execute('''UPDATE lots SET description = ?, status = "described" WHERE id = ? ''',(desc, lot_id))
+                connection.commit()
+    connection.close()
+
+
 def set_match_product(lot_id, product_id):
     connection = sqlite3.connect(DB_NAME)
     cursor = connection.cursor()
@@ -72,5 +86,21 @@ def set_finish_status(script_id):
     cursor = connection.cursor()
     cursor.execute(f'''UPDATE lots SET status = "finished" WHERE status = "success" ''')
     cursor.execute(f'''UPDATE cards SET status = "finished" WHERE script_id = ? AND status = "success" ''', (script_id, ))
+    connection.commit()
+    connection.close()
+
+
+def set_success(script_id, success):
+    connection = sqlite3.connect(DB_NAME)
+    cursor = connection.cursor()
+    cursor.execute(f'''UPDATE scripts SET status = "finished", success = ? WHERE id = ? ''', (success, script_id))
+    connection.commit()
+    connection.close()
+
+
+def set_date_collect(script_id):
+    connection = sqlite3.connect(DB_NAME)
+    cursor = connection.cursor()
+    cursor.execute(f'''UPDATE scripts SET last_collect_date = ? WHERE id = ? ''', (datetime.today().date(), script_id, ))
     connection.commit()
     connection.close()

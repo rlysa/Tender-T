@@ -88,15 +88,15 @@ def get_filtered_lots(script_id, category_id):
     cursor = connection.cursor()
     lots = cursor.execute(f'''SELECT l.id, l.name, l.description FROM lots l JOIN cards c ON l.card_id = c.id WHERE c.script_id = ? AND l.status = "filtered" AND l.category_id = ? ''',(script_id, category_id)).fetchall()
     connection.close()
-    return [f'{lot[0]}: {lot[1]} ({lot[2]}' for lot in lots]
+    return [f'{lot[0]}: {lot[1]} ({lot[2]})' for lot in lots]
 
 
 def get_products(script_id, category_id):
     connection = sqlite3.connect(DB_NAME)
     cursor = connection.cursor()
-    products = cursor.execute(f'''SELECT id, name, cost FROM products WHERE script_id = ? AND category_id = ? ''',(script_id, category_id)).fetchall()
+    products = cursor.execute(f'''SELECT id, name, description, cost FROM products WHERE script_id = ? AND category_id = ? ''',(script_id, category_id)).fetchall()
     connection.close()
-    return [f'{product[0]}: {product[1]}: {product[2]}' for product in products]
+    return [[product[0], product[1], product[2], product[3]] for product in products]
 
 
 def get_filtered_cards(script_id):
@@ -123,6 +123,14 @@ def get_relevant_cards(script_id):
     return [[i for i in card] for card in cards]
 
 
+def get_described_lots(script_id, category_id):
+    connection = sqlite3.connect(DB_NAME)
+    cursor = connection.cursor()
+    lots = cursor.execute(f'''SELECT l.id, l.name, l.description FROM lots l JOIN cards c ON l.card_id = c.id WHERE c.script_id = ? AND l.status = "described" AND l.category_id = ? ''',(script_id, category_id)).fetchall()
+    connection.close()
+    return [[lot[0], lot[1], lot[2]] for lot in lots]
+
+
 def get_matched_lots_products_for_card(card_id):
     connection = sqlite3.connect(DB_NAME)
     cursor = connection.cursor()
@@ -142,7 +150,7 @@ def get_not_matched_lots(card_id):
 def get_matched_lots_count(script_id):
     connection = sqlite3.connect(DB_NAME)
     cursor = connection.cursor()
-    lots_count = cursor.execute(f'''SELECT COUNT(l.id) FROM lots l JOIN cards c ON l.card_id = c.id WHERE c.script_id = ? AND l.status = "matched"''',(script_id, )).fetchone()
+    lots_count = cursor.execute(f'''SELECT COUNT(l.id) FROM lots l JOIN cards c ON l.card_id = c.id WHERE c.script_id = ? AND l.status = "success"''',(script_id, )).fetchone()
     connection.close()
     return lots_count[0]
 
@@ -152,4 +160,4 @@ def get_last_collect_date(script_id):
     cursor = connection.cursor()
     last_collect_date = cursor.execute(f'''SELECT last_collect_date FROM scripts WHERE id = ? ''', (script_id,)).fetchone()
     connection.close()
-    return last_collect_date
+    return last_collect_date[0]
