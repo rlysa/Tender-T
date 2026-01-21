@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 import sqlite3
 
-from config import DB_NAME, ADMIN
+from config import DB_NAME, ADMIN, USER
 from db.db_models.db_connector import get_users
 
 
@@ -114,6 +114,9 @@ def set_admins():
             cursor.execute('''INSERT INTO users (id, role, access) VALUES (?, ?, ?)''', (user_id, 1, 1))
         else:
             cursor.execute('''UPDATE users SET role = 1 WHERE id = ?''', (user_id,))
+    for user_id in USER:
+        if user_id not in get_users():
+            cursor.execute('''INSERT INTO users (id, role, access) VALUES (?, ?, ?)''', (user_id, 2, 1))
     connection.commit()
     connection.close()
 
