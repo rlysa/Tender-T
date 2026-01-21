@@ -78,3 +78,11 @@ def get_template_category(category_id):
     temp = cursor.execute('''SELECT template FROM categories WHERE id = ?''', (category_id,)).fetchone()
     connection.close()
     return temp[0]
+
+
+def get_cost_script(script_id):
+    connection = sqlite3.connect(DB_NAME)
+    cursor = connection.cursor()
+    cost = cursor.execute('''SELECT cost FROM scripts WHERE id = ?''', (script_id, )).fetchone()
+    connection.close()
+    return cost[0] if cost else 0

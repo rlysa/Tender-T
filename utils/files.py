@@ -55,10 +55,10 @@ def get_text_by_words(file_text, categories):
         categories = [category.lower().strip() for category in categories if category.strip()]
         category_products = {'title': ''}
         for row in file_text.split('\n'):
-            if any(word in row.lower() for word in ['цена', 'название', 'артикул', 'стоимость']):
+            if any(word in row.lower() for word in ['название', 'артикул', 'стоимость']):
                 category_products['title'] += f'{row}\n'
             for category in categories:
-                if any(word[:-2:].lower() in row.lower() for word in category.split(' ')):
+                if any(word.lower() in row.lower() for word in category.split(' ')):
                     if category not in category_products:
                         category_products[category] = ''
                     category_products[category] += f'{row}\n'

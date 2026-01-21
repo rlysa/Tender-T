@@ -69,7 +69,7 @@ def add_not_transformed_products(category_id, script_id, products):
     cursor = connection.cursor()
     for product in products.split('\n'):
         if product.strip():
-            cursor.execute('''INSERT OR IGNORE INTO products (category_id, script_id, raw_data) VALUES (?, ?, ?)''',(category_id, script_id, product))
+            cursor.execute('''INSERT OR IGNORE INTO products (category_id, script_id, raw_data, cost) VALUES (?, ?, ?, ?)''',(category_id, script_id, product, 0))
             connection.commit()
     connection.close()
 
@@ -113,5 +113,13 @@ def set_admins():
             cursor.execute('''INSERT INTO users (id, role, access) VALUES (?, ?, ?)''', (user_id, 1, 1))
         else:
             cursor.execute('''UPDATE users SET role = 1 WHERE id = ?''', (user_id,))
+    connection.commit()
+    connection.close()
+
+
+def update_cost_script(script_id, cost):
+    connection = sqlite3.connect(DB_NAME)
+    cursor = connection.cursor()
+    cursor.execute('''UPDATE scripts SET cost = ? WHERE id = ?''', (cost, script_id))
     connection.commit()
     connection.close()

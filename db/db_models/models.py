@@ -31,6 +31,7 @@ class Scripts(SqlAlchemyBase):
     last_collect_date = sqlalchemy.Column(sqlalchemy.Date)
     status = sqlalchemy.Column(sqlalchemy.String(50), index=True)
     success = sqlalchemy.Column(sqlalchemy.Boolean)
+    cost = sqlalchemy.Column(sqlalchemy.Float)
 
     user = relationship('Users', back_populates='scripts')
     cards = relationship('Cards', back_populates='script', cascade='all, delete-orphan')
