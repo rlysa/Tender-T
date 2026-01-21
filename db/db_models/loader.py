@@ -99,9 +99,10 @@ def update_products(products, temp):
                 pr_id, article_name_cost_desc = [i.strip() for i in product.strip().split(':', 1)]
                 if len(article_name_cost_desc.split(';', 3)) == 4:
                     article, name, cost, desc = [i.strip() for i in article_name_cost_desc.split(';', 3)]
-                    desc = '; '.join([f'{temp[index]}: {value}' for index, value in enumerate(desc.split(';'))])
-                    cursor.execute('''UPDATE products SET article = ?, name = ?, description = ?, cost = ? WHERE id = ? ''',(article, name, desc, float(cost) if cost.replace('.', '').replace(',', '').isdigit() else None , pr_id))
-                    connection.commit()
+                    if len(desc.split(';')) == len(temp):
+                        desc = '; '.join([f'{temp[index]}: {value}' for index, value in enumerate(desc.split(';'))])
+                        cursor.execute('''UPDATE products SET article = ?, name = ?, description = ?, cost = ? WHERE id = ? ''',(article, name, desc, float(cost) if cost.replace('.', '').replace(',', '').isdigit() else None , pr_id))
+                        connection.commit()
     connection.close()
 
 

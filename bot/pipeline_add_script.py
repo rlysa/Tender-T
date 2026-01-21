@@ -6,7 +6,7 @@ import os
 
 from bot.forms import Form
 from db.db_models.loader import *
-from db.db_models.db_connector import get_admins, get_new_script, get_categories, get_raw_products, get_template_category
+from db.db_models.db_connector import *
 from etl.load.loader import set_status
 from etl.extract.db_connector import get_status
 from etl.pipeline_run_script import run_pipeline
@@ -21,7 +21,6 @@ router = Router()
 @router.message(Command('add_script'))
 async def cmd_add_script(message: Message, state: FSMContext):
     await state.set_state(Form.add_script)
-    await state.update_data(cost=0)
     if message.from_user.id not in get_admins():
         await message.answer('У вас нет доступа\nДля получения доступа к сценариям отправьте /get_access')
         return
@@ -60,7 +59,6 @@ async def pipeline_add_script(message: Message, state: FSMContext):
             return
         if get_status('scripts', script_id) == 'file1_received':
             await script_get_file_products(message, script_id)
-            await state.update_data(cost=0)
         if get_status('scripts', script_id) != 'file1_received':
             await message.answer(f'Файлы отправлены на обработку')
             await process(script_id, message, state)
@@ -182,6 +180,7 @@ async def process(script_id, message, state):
         categories_name_id = add_categories(script_id, product_categories.strip().split('\n'))
         add_key_words(script_id, [f'{category}: {category}' for category in categories_name_id], categories_name_id)
         set_status('scripts', script_id, 'cat_kw_received')
+
     if get_status('scripts', script_id) == 'cat_kw_received':
         await message.answer('Файл 1 обработан')
         save_path = os.path.join(project_root, 'db', 'files', f'{script_id}_2.xlsx')
@@ -201,19 +200,20 @@ async def process(script_id, message, state):
             add_not_transformed_products(product_categories[category], script_id, file_text[category])
         set_status('scripts', script_id, 'raw_data_received')
         delete_files(script_id)
+
     if get_status('scripts', script_id) == 'raw_data_received' or get_status('scripts', script_id).startswith('cat_process_') :
         product_categories = get_categories(script_id)
-        data = await state.get_data()
-        cost, cur_cost = data['cost'], 0
         for category in product_categories:
             answer = make_request_to_ai(prompt_get_template, category)
             prompt_tokens, completion_tokens = answer[1], answer[2]
             cur_cost = prompt_tokens / 1000 * COST_INPUT_TOKENS * 81 + completion_tokens / 1000 * COST_OUTPUT_TOKENS * 81
-            await state.update_data(cost=(cost + cur_cost))
+            cost = get_cost_script(script_id)
+            update_cost_script(script_id, round(cur_cost + cost, 2))
             temp = '<' + '>; <'.join([i.strip() for i in answer[0].split('\n')]) + '>'
             set_template_category(product_categories[category], temp)
-            set_status('scripts', script_id, 'cat_process_' + product_categories[category])
-        set_status('scripts', script_id, 'cat_process_done')
+            set_status('scripts', script_id, f'cat_process_{product_categories[category]}')
+        set_status('scripts', script_id, 'cat_processed')
+
     if get_status('scripts', script_id) == 'cat_processed' or get_status('scripts', script_id).startswith('file2_process_') :
         await message.answer('Файл 2 прочитан. Отправлен на обработку')
         product_categories = get_categories(script_id)
@@ -226,23 +226,24 @@ async def process(script_id, message, state):
                 continue
             temp = get_template_category(product_categories[category])
 
-            strings = get_raw_products(script_id, product_categories[category])
-            strings = [strings[i:i + 100] for i in range(0, len(strings), 100)]
-            for ten_strings in strings:
-                answer = make_request_to_ai(prompt_get_struct_info.replace('//Заменить//', temp) + title, '\n'.join([f'{string[0]}: {string[1]}' for string in ten_strings]))
-                if not answer or len(answer) < 3:
-                    await message.answer(f'Ошибка обработки категории {category}')
-                    return
-                prompt_tokens, completion_tokens = answer[1], answer[2]
-                data = await state.get_data()
-                cost, cur_cost = data['cost'], 0
-                cur_cost = prompt_tokens / 1000 * COST_INPUT_TOKENS * 81 + completion_tokens / 1000 * COST_OUTPUT_TOKENS * 81
-                await state.update_data(cost=(cost + cur_cost))
-                update_products(answer[0].strip().split('\n'), temp)
+            while get_raw_products(script_id, product_categories[category]) != []:
+                strings = get_raw_products(script_id, product_categories[category])
+                strings = [strings[i:i + 100] for i in range(0, len(strings), 100)]
+                for ten_strings in strings:
+                    answer = make_request_to_ai(prompt_get_struct_info.replace('//Заменить1//', str(len(ten_strings))).replace('//Заменить2//', temp) + title, '\n'.join([f'{string[0]}: {string[1]}' for string in ten_strings]))
+                    if not answer or len(answer) < 3:
+                        await message.answer(f'Ошибка обработки категории {category}')
+                        return
+                    prompt_tokens, completion_tokens = answer[1], answer[2]
+                    cur_cost = prompt_tokens / 1000 * COST_INPUT_TOKENS * 81 + completion_tokens / 1000 * COST_OUTPUT_TOKENS * 81
+                    cost = get_cost_script(script_id)
+                    update_cost_script(script_id, round(cur_cost + cost, 2))
+                    update_products(answer[0].strip().split('\n'), temp)
             set_status('scripts', script_id, f'file2_process_{product_categories[category]}')
         if get_status('scripts', script_id) == 'cat_process_done':
             raise Exception('Не удалось обработать файл 2')
-        await message.answer(f'Стоимость создания сценария: {round(cost + cur_cost, 2)}₽')
+        cost = get_cost_script(script_id)
+        await message.answer(f'Стоимость создания сценария: {cost}₽')
         set_status('scripts', script_id, 'products_received')
 
 
