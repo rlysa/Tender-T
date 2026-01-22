@@ -1,8 +1,6 @@
-from os import name
-
 from aiogram.types import FSInputFile
 import os
-from datetime  import datetime, timedelta, timezone
+import traceback
 
 from etl.extract.api_data import *
 from etl.transform.transformer import *
@@ -67,4 +65,5 @@ async def run_pipeline(bot=1, restart=False):
         except Exception as e:
             for admin in get_admins():
                 await bot.send_message(admin, f'Ошибка при выполнении сценария: {e}')
+                await bot.send_message(admin, ''.join(traceback.format_exc()))
                 set_success(script_id, False)

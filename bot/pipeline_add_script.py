@@ -3,6 +3,7 @@ from aiogram.filters import Command
 from aiogram.types import Message, FSInputFile
 from aiogram.fsm.context import FSMContext
 import os
+import traceback
 
 from bot.forms import Form
 from db.db_models.loader import *
@@ -78,6 +79,7 @@ async def pipeline_add_script(message: Message, state: FSMContext):
                 await run_pipeline(message.bot)
     except Exception as e:
         await message.answer(f'Ошибка при создании сценария: {e}')
+        await message.answer("".join(traceback.format_exc()))
 
 
 async def script_get_name(message):
