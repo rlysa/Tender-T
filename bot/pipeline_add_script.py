@@ -59,6 +59,7 @@ async def pipeline_add_script(message: Message, state: FSMContext):
             return
         if get_status('scripts', script_id) == 'file1_received':
             await script_get_file_products(message, script_id)
+            update_cost_script(script_id, 0)
         if get_status('scripts', script_id) != 'file1_received':
             await message.answer(f'Файлы отправлены на обработку')
             await process(script_id, message, state)

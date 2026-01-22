@@ -26,7 +26,7 @@ def change_access(user_id):
 def add_new_script(name, user_id):
     connection = sqlite3.connect(DB_NAME)
     cursor = connection.cursor()
-    new_script = cursor.execute('''INSERT INTO scripts (name, user_id, created_at, status) VALUES (?, ?, ?, ?) RETURNING id''', (name, user_id, datetime.now(timezone(timedelta(hours=3))), 'new')).fetchone()
+    new_script = cursor.execute('''INSERT INTO scripts (name, user_id, created_at, status, cost) VALUES (?, ?, ?, ?, ?) RETURNING id''', (name, user_id, datetime.now(timezone(timedelta(hours=3))), 'new', 0)).fetchone()
     connection.commit()
     connection.close()
     return new_script[0]
