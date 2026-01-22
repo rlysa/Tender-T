@@ -69,7 +69,7 @@ def get_raw_products(script_id, category_id):
     cursor = connection.cursor()
     products = cursor.execute('''SELECT id, raw_data FROM products WHERE script_id = ? AND category_id = ? AND article IS NULL ''', (script_id, category_id)).fetchall()
     connection.close()
-    return [[product[0], product[1]] for product in products]
+    return [[product[0], product[1]] for product in products] if products else [['', '']]
 
 
 def get_template_category(category_id):
