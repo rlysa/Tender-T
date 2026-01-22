@@ -36,6 +36,14 @@ async def cmd_add_script(message: Message, state: FSMContext):
     await message.answer(f'Введите название сценария')
 
 
+@router.message(Command('get_db'), Form.add_script)
+async def cmd_get_db(message: Message):
+    if message.from_user.id in get_admins():
+        project_root = os.path.dirname(os.path.abspath('Tender-T'))
+        path = os.path.join(project_root, 'db', 'db', 'tender_t.db')
+        await message.answer_document(document=FSInputFile(path))
+
+
 @router.message(Command('cancel'), Form.add_script)
 async def cancel_add_script(message: Message, state: FSMContext):
     await state.clear()
